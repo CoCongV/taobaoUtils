@@ -27,7 +27,8 @@ def load_config():
         config_data = toml.load(config_path)
         return config_data
     except Exception as e:
-        print(f"错误：加载 config.toml 文件失败: {e}")
+        # 使用标准错误输出，因为此时可能还没有配置好logger
+        sys.stderr.write(f"错误：加载 config.toml 文件失败: {e}\n")
         sys.exit(1)
 
 
@@ -230,8 +231,8 @@ def process_row(df, index, row, last_send_time, config_data, logger):
                 config_data['RANDOM_INTERVAL_SECONDS_MIN'], config_data['RANDOM_INTERVAL_SECONDS_MAX'])
             total_wait = wait_seconds + random_seconds
 
-            logger.info("距离上次发送时间 %.0f 秒，未满 %.0f 秒。", elapsed_time.total_seconds(
-            ), target_interval.total_seconds())
+            logger.info("距离上次发送时间 %.0f 秒，未满 %.0f 秒。", elapsed_time.total_seconds(),
+                        target_interval.total_seconds())
             logger.info("将等待 %.2f 秒 (含随机延迟)...", total_wait)
             time.sleep(total_wait)
 

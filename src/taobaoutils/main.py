@@ -9,6 +9,7 @@ from taobaoutils.utils import (
     process_row,
     save_dataframe
 )
+import pandas as pd
 
 # 加载配置
 config_data = load_config()
@@ -23,8 +24,8 @@ def main():
     """
     logger.info("开始执行脚本...")
 
-    df = load_excel_data()
-    validate_columns(df)
+    df = load_excel_data(config_data, logger)
+    validate_columns(df, config_data, logger)
 
     total_rows = len(df)
     logger.info("从 '%s' 文件中成功读取 %s 行数据。",
@@ -39,10 +40,10 @@ def main():
     # 遍历 DataFrame 的每一行
     for index, row in df.iterrows():
         new_last_send_time, processed = process_row(
-            df, index, row, last_send_time)
+            df, index, row, last_send_time, config_data, logger)
         if processed:
             last_send_time = new_last_send_time
-            save_dataframe(df, index)  # 每次处理完一行就保存
+            save_dataframe(df, index, config_data, logger)  # 每次处理完一行就保存
 
     logger.info("\n所有行处理完毕。脚本执行结束。")
 
