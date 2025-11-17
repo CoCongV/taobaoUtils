@@ -12,11 +12,19 @@ dependencies = [
     "pandas (>=2.3.3,<3.0.0)",
     "openpyxl (>=3.1.5,<4.0.0)",
     "colorama (>=0.4.6,<0.5.0)",
-    "toml (>=0.10.2,<0.11.0)"
+    "toml (>=0.10.2,<0.11.0)",
+    "Flask (>=3.0.3,<4.0.0)",
+    "Flask-SQLAlchemy (>=3.1.1,<4.0.0)",
+    "Flask-RESTful (>=0.3.10,<0.4.0)",
+    "gunicorn (>=22.0.0,<23.0.0)",
+    "python-dotenv (>=1.0.1,<2.0.0)"
 ]
 
 [tool.poetry]
-packages = [{include = "src"}]
+packages = [{include = "taobaoutils", from = "src"}]
+
+[tool.poetry.scripts]
+tb = "taobaoutils.cli:main"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
