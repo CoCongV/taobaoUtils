@@ -1,15 +1,23 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
+from flask_praetorian import Praetorian
 from pathlib import Path
 import os
 
 # 初始化 Flask 扩展
 db = SQLAlchemy()
+guard = Praetorian()
+
 
 def create_app():
     """创建并配置 Flask 应用"""
     app = Flask(__name__)
+    
+    # 添加密钥用于JWT签名
+    app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
+    app.config['JWT_ACCESS_LIFESPAN'] = {'hours': 24}
+    app.config['JWT_REFRESH_LIFESPAN'] = {'days': 30}
     
     # 配置数据库
     # 使用当前工作目录下的 sqlite 数据库
@@ -20,10 +28,23 @@ def create_app():
     # 初始化扩展
     db.init_app(app)
     
+    # 初始化Praetorian
+    from taobaoutils.models import User
+    guard.init_app(app, User)
+    
     # 创建 API 实例
     api = Api(app)
     
-    # 注册路由和资源
+    # 注册认证资源
+    from taobaoutils.auth import RegisterResource, LoginResource, RefreshResource, UserResource, UsersResource
+    
+    api.add_resource(RegisterResource, '/api/register')
+    api.add_resource(LoginResource, '/api/login')
+    api.add_resource(RefreshResource, '/api/refresh')
+    api.add_resource(UserResource, '/api/user')
+    api.add_resource(UsersResource, '/api/users')
+    
+    # 注册业务资源
     from taobaoutils.resources import ProcessResource, StatusResource
     
     api.add_resource(ProcessResource, '/api/process')

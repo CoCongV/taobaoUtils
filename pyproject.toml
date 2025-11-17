@@ -17,7 +17,8 @@ dependencies = [
     "Flask-SQLAlchemy (>=3.1.1,<4.0.0)",
     "Flask-RESTful (>=0.3.10,<0.4.0)",
     "gunicorn (>=22.0.0,<23.0.0)",
-    "python-dotenv (>=1.0.1,<2.0.0)"
+    "python-dotenv (>=1.0.1,<2.0.0)",
+    "flask-praetorian (>=1.1.0,<2.0.0)"
 ]
 
 [tool.poetry]

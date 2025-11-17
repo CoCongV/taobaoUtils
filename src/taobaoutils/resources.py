@@ -1,11 +1,15 @@
 from flask_restful import Resource, reqparse
-from taobaoutils.app import db
+from flask_praetorian import auth_required, current_user
+from taobaoutils.app import db, guard
 from taobaoutils.models import ProcessTask
 import pandas as pd
 from pathlib import Path
 import os
 
+
 class ProcessResource(Resource):
+    method_decorators = [auth_required]  # 为整个资源添加认证保护
+    
     def get(self):
         """获取所有处理任务"""
         parser = reqparse.RequestParser()
@@ -26,29 +30,31 @@ class ProcessResource(Resource):
         parser.add_argument('status', type=str, default='pending')
         args = parser.parse_args()
         
-        try:
-            task = ProcessTask(
-                url=args['url'],
-                status=args['status']
-            )
-            
-            db.session.add(task)
-            db.session.commit()
-            
-            return {'message': 'Task created successfully', 'task': task.to_dict()}, 201
-        except Exception as e:
-            db.session.rollback()
-            return {'message': f'Error creating task: {str(e)}'}, 500
+        task = ProcessTask(
+            url=args['url'],
+            status=args['status']
+        )
+        
+        db.session.add(task)
+        db.session.commit()
+        
+        return {'message': 'Task created successfully', 'task': task.to_dict()}, 201
+
 
 class StatusResource(Resource):
+    method_decorators = [auth_required]  # 为整个资源添加认证保护
+    
     def get(self):
         """获取系统状态"""
         total_tasks = ProcessTask.query.count()
         completed_tasks = ProcessTask.query.filter_by(status='completed').count()
         pending_tasks = ProcessTask.query.filter_by(status='pending').count()
         
+        user = current_user()
+        
         return {
             'total_tasks': total_tasks,
             'completed_tasks': completed_tasks,
-            'pending_tasks': pending_tasks
+            'pending_tasks': pending_tasks,
+            'current_user': user.to_dict() if user else None
         }, 200
