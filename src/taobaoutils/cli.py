@@ -1,93 +1,77 @@
 import sys
-import argparse
 from pathlib import Path
-import pandas as pd
+
+import click
+
 from taobaoutils import logger
-from taobaoutils.app import create_app
-from taobaoutils.utils import (
-    load_config,
-    load_excel_data,
-    validate_columns,
-    process_row,
-    save_dataframe
-)
+
+# Ensure the project root is in sys.path for module imports
+# Assuming cli.py is in src/taobaoutils/
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 
-def start_server(host='127.0.0.1', port=5000, debug=False):
-    """启动Flask服务器"""
-    logger.info("Starting server on %s:%s", host, port)
-    app = create_app()
-    app.run(host=host, port=port, debug=debug)
+@click.group()
+def main():
+    """Taobao Utils CLI"""
+    pass
 
 
-def process_xlsx(file_path):
-    """处理XLSX文件"""
-    # 这里我们会复用原始main.py中的逻辑来处理Excel文件
-    # 使用全局 logger
-    config_data = load_config()
-    
+@main.command()
+@click.option('--host', default='127.0.0.1', help='Host address for the Flask server.')
+@click.option('--port', default=5000, type=int, help='Port for the Flask server.')
+@click.option('--workers', default=1, type=int, help='Number of Gunicorn worker processes.')
+def serve(host, port, workers):
+    """Run the Flask API server."""
+    logger.info("Starting Flask API server on %s:%s with %s workers...", host, port, workers)
     try:
-        logger.info("Processing Excel file: %s", file_path)
+        from taobaoutils.app import create_app
+        app = create_app()
         
-        # 更新配置中的文件路径
-        config_data['EXCEL_FILE_PATH'] = file_path
-        
-        df = load_excel_data(config_data, logger)
-        validate_columns(df, config_data, logger)
-        
-        total_rows = len(df)
-        logger.info("Successfully loaded %s rows from '%s'", total_rows, file_path)
-        
-        # 获取上一次的发送时间
-        last_send_time = df[config_data['SEND_TIME_COLUMN']].dropna().max()
-        if pd.isna(last_send_time):
-            last_send_time = None
-        logger.info("Last send time: %s", last_send_time)
-        
-        # 遍历 DataFrame 的每一行
-        processed_count = 0
-        for index, row in df.iterrows():
-            new_last_send_time, processed = process_row(
-                df, index, row, last_send_time, config_data, logger)
-            if processed:
-                last_send_time = new_last_send_time
-                save_dataframe(df, index, config_data, logger)  # 每次处理完一行就保存
-                processed_count += 1
-                
-        logger.info("Processed %s rows. All done.", processed_count)
-        
+        # Use Gunicorn to serve the Flask app
+        # This requires gunicorn to be installed
+        from gunicorn.app.base import BaseApplication
+
+        class StandaloneApplication(BaseApplication):
+            def __init__(self, app, options=None):
+                self.options = options or {}
+                self.application = app
+                super().__init__()
+
+            def load_config(self):
+                for key, value in self.options.items():
+                    if key in self.cfg.settings and value is not None:
+                        self.cfg.set(key.lower(), value)
+
+            def load(self):
+                return self.application
+
+        options = {
+            'bind': f'{host}:{port}',
+            'workers': workers,
+            # Use the configured log level
+            'loglevel': logger.level,
+            # Log to stdout
+            'accesslog': '-',
+            # Log to stderr
+            'errorlog': '-',
+        }
+        StandaloneApplication(app, options).run()
+
+    except ImportError:
+        logger.error("Gunicorn is not installed. Please install it with 'poetry add gunicorn'.")
+        sys.exit(1)
     except Exception as e:
-        logger.error("Error processing Excel file: %s", e)
+        logger.error("Failed to start Flask API server: %s", e)
         sys.exit(1)
 
-
-def main():
-    """主CLI入口点"""
-    parser = argparse.ArgumentParser(description='Taobao Utils CLI')
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    
-    # 服务器命令
-    server_parser = subparsers.add_parser('server', help='Start the REST API server')
-    server_parser.add_argument('--host', default='127.0.0.1', help='Host to bind to')
-    server_parser.add_argument('--port', type=int, default=5000, help='Port to bind to')
-    server_parser.add_argument('--debug', action='store_true', help='Enable debug mode')
-    
-    # 处理Excel文件命令
-    process_parser = subparsers.add_parser('process', help='Process Excel file')
-    process_parser.add_argument('file', help='Path to the Excel file to process')
-    
-    args = parser.parse_args()
-    
-    if args.command == 'server':
-        start_server(args.host, args.port, args.debug)
-    elif args.command == 'process':
-        if not Path(args.file).exists():
-            # 为错误消息创建一个基本的日志记录器
-            logger.error("Error: File '%s' does not exist", args.file)
-            sys.exit(1)
-        process_xlsx(args.file)
-    else:
-        parser.print_help()
+@main.command(name="process")
+@click.argument('excel_path', type=click.Path(exists=True, dir_okay=False, readable=True))
+def process_excel_command(excel_path):
+    """Process the Excel file specified by path."""
+    logger.info("Processing Excel file: %s...", excel_path)
+    from taobaoutils.excel_processor import process_excel_main
+    process_excel_main(excel_path)
 
 
 if __name__ == '__main__':

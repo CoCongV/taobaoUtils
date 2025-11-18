@@ -52,3 +52,5 @@ Thumbs.db
 
 # test file
 *.xlsx
+
+config.toml

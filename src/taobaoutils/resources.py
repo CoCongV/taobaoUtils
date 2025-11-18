@@ -1,68 +1,52 @@
 from flask_restful import Resource, reqparse
-from flask_praetorian import auth_required, current_user
 from taobaoutils.app import db
-from taobaoutils.models import ProcessTask
-import pandas as pd
-from pathlib import Path
-import os
+from taobaoutils.models import RequestLog
+from taobaoutils import config_data, logger
+from datetime import datetime
 
 
-class ProcessResource(Resource):
-    method_decorators = [auth_required]  # 为整个资源添加认证保护
-    
-    def get(self):
-        """获取当前用户的所有处理任务"""
-        parser = reqparse.RequestParser()
-        parser.add_argument('status', type=str, help='Filter by status')
-        args = parser.parse_args()
-        
-        # 只获取当前用户的任务
-        user = current_user()
-        query = ProcessTask.query.filter_by(user_id=user.id)
-        
-        if args['status']:
-            query = query.filter_by(status=args['status'])
-            
-        tasks = query.all()
-            
-        return {'tasks': [task.to_dict() for task in tasks]}, 200
-    
+class RequestLogResource(Resource):
+    def get(self, log_id=None):
+        if log_id:
+            log = RequestLog.query.get_or_404(log_id)
+            return log.to_dict()
+        else:
+            logs = RequestLog.query.all()
+            return [log.to_dict() for log in logs]
+
     def post(self):
-        """创建新处理任务"""
         parser = reqparse.RequestParser()
-        parser.add_argument('url', type=str, required=True, help='URL is required')
-        parser.add_argument('status', type=str, default='pending')
+        parser.add_argument('url', type=str, required=True, help='URL cannot be blank!')
+        parser.add_argument('status', type=str, required=True, help='Status cannot be blank!')
+        parser.add_argument('response_content', type=str, required=False)
+        parser.add_argument('response_code', type=int, required=False)
         args = parser.parse_args()
-        
-        # 关联当前用户
-        user = current_user()
-        task = ProcessTask(
+
+        new_log = RequestLog(
             url=args['url'],
             status=args['status'],
-            user_id=user.id
+            send_time=datetime.utcnow(),
+            response_content=args['response_content'],
+            response_code=args['response_code']
         )
-        
-        db.session.add(task)
+        db.session.add(new_log)
         db.session.commit()
-        
-        return {'message': 'Task created successfully', 'task': task.to_dict()}, 201
+        logger.info("New request log added: %s", new_log.url)
+        return new_log.to_dict(), 201
 
 
-class StatusResource(Resource):
-    method_decorators = [auth_required]  # 为整个资源添加认证保护
-    
-    def get(self):
-        """获取当前用户系统状态"""
-        user = current_user()
+class RegistrationResource(Resource):
+    def post(self):
+        if not config_data['app']['ALLOW_REGISTRATION']:
+            logger.warning("User registration is disabled by configuration.")
+            return {"message": "User registration is currently disabled."}, 403
         
-        # 只统计当前用户的任务
-        total_tasks = ProcessTask.query.filter_by(user_id=user.id).count()
-        completed_tasks = ProcessTask.query.filter_by(user_id=user.id, status='completed').count()
-        pending_tasks = ProcessTask.query.filter_by(user_id=user.id, status='pending').count()
-        
-        return {
-            'total_tasks': total_tasks,
-            'completed_tasks': completed_tasks,
-            'pending_tasks': pending_tasks,
-            'current_user': user.to_dict() if user else None
-        }, 200
+        # Placeholder for actual registration logic
+        parser = reqparse.RequestParser()
+        parser.add_argument('username', type=str, required=True, help='Username cannot be blank!')
+        parser.add_argument('password', type=str, required=True, help='Password cannot be blank!')
+        args = parser.parse_args()
+
+        logger.info("Attempting to register user: %s", args['username'])
+        # In a real app, you'd hash the password and save the user
+        return {"message": f"User {args['username']} registered successfully (placeholder)."}, 201

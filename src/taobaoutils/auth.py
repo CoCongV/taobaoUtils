@@ -1,5 +1,6 @@
 from flask_restful import Resource, reqparse
 from flask_praetorian import auth_required, current_user
+
 from taobaoutils.app import db, guard
 from taobaoutils.models import User
 
