@@ -1,16 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import json
-import logging
-import random
-import sys
-import time
-from datetime import datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 import requests
-from colorama import Fore, Style, init
+from colorama import init
 
 from taobaoutils import config_data, logger
 from taobaoutils.utils import (

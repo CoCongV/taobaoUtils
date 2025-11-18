@@ -46,6 +46,7 @@ pnpm-debug.log*
 .DS_Store
 .Trashes
 Thumbs.db
+*.db
 
 # Gemini specific ignores
 .geminiignore

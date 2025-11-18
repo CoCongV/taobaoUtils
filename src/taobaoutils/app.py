@@ -3,25 +3,40 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
+from flask_praetorian import Praetorian
+
 from taobaoutils import config_data, logger
 
 
 db = SQLAlchemy()
 api = Api()
+guard = Praetorian() # Praetorian guard 实例
+
 
 def create_app():
     app = Flask(__name__)
 
     # Load Flask configuration from config.toml
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_very_secret_key_that_should_be_in_env') # Fallback for development
-    app.config['SQLALCHEMY_DATABASE_URI'] = config_data['app'].get('DATABASE_URI', 'sqlite:///taobaoutils.db')
+    app.config['SECRET_KEY'] = config_data['app'].get('SECRET_KEY', 'a_very_secret_key_that_should_be_in_conf')
+    app.config['SQLALCHEMY_DATABASE_URI'] = config_data['app'].get(
+        'DATABASE_URI',
+        f"sqlite:///{os.path.abspath(os.path.join(os.getcwd(), 'taobaoutils.db'))}"
+    )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Praetorian 配置
+    app.config['JWT_ACCESS_LIFESPAN'] = {'hours': 24}
+    app.config['JWT_REFRESH_LIFESPAN'] = {'days': 30}
 
     db.init_app(app)
     api.init_app(app)
 
+    # 初始化 Praetorian
+    from taobaoutils.models import User
+    guard.init_app(app, User)
+
     # Import and register blueprints/resources
-    from taobaoutils.routes import initialize_routes
+    from taobaoutils.api.routes import initialize_routes
     initialize_routes(api)
 
     with app.app_context():

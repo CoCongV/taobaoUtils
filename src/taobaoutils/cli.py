@@ -20,49 +20,15 @@ def main():
 @main.command()
 @click.option('--host', default='127.0.0.1', help='Host address for the Flask server.')
 @click.option('--port', default=5000, type=int, help='Port for the Flask server.')
-@click.option('--workers', default=1, type=int, help='Number of Gunicorn worker processes.')
-def serve(host, port, workers):
-    """Run the Flask API server."""
-    logger.info("Starting Flask API server on %s:%s with %s workers...", host, port, workers)
+def serve(host, port):
+    """Run the Flask API development server for testing."""
+    logger.info("Starting Flask API development server on %s:%s...", host, port)
     try:
         from taobaoutils.app import create_app
         app = create_app()
-        
-        # Use Gunicorn to serve the Flask app
-        # This requires gunicorn to be installed
-        from gunicorn.app.base import BaseApplication
-
-        class StandaloneApplication(BaseApplication):
-            def __init__(self, app, options=None):
-                self.options = options or {}
-                self.application = app
-                super().__init__()
-
-            def load_config(self):
-                for key, value in self.options.items():
-                    if key in self.cfg.settings and value is not None:
-                        self.cfg.set(key.lower(), value)
-
-            def load(self):
-                return self.application
-
-        options = {
-            'bind': f'{host}:{port}',
-            'workers': workers,
-            # Use the configured log level
-            'loglevel': logger.level,
-            # Log to stdout
-            'accesslog': '-',
-            # Log to stderr
-            'errorlog': '-',
-        }
-        StandaloneApplication(app, options).run()
-
-    except ImportError:
-        logger.error("Gunicorn is not installed. Please install it with 'poetry add gunicorn'.")
-        sys.exit(1)
+        app.run(host=host, port=port, debug=True)
     except Exception as e:
-        logger.error("Failed to start Flask API server: %s", e)
+        logger.error("Failed to start Flask API development server: %s", e)
         sys.exit(1)
 
 @main.command(name="process")
