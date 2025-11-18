@@ -24,6 +24,6 @@ except Exception as e:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-    logger.warning(f"Failed to init logger: {e}")
+    logger.warning("Failed to init logger: %s", e)
 
 __all__ = ['create_app', 'db', 'ProcessTask', 'User', 'logger']
