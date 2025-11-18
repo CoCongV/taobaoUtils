@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import sys
+from taobaoutils import logger
 from taobaoutils.utils import (
     load_config,
-    setup_logging,
     load_excel_data,
     validate_columns,
     process_row,
     save_dataframe
 )
-import pandas as pd
 
 # 加载配置
 config_data = load_config()
-
-# 配置日志
-logger = setup_logging(config_data)
 
 
 def main():

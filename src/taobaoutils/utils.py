@@ -25,6 +25,16 @@ def load_config():
         if not config_path.exists():
             raise FileNotFoundError(f"config.toml 文件未找到于: {config_path}")
         config_data = toml.load(config_path)
+        
+        # 确保 'logging' 配置节存在
+        if 'logging' not in config_data:
+            config_data['logging'] = {}
+            
+        # 为日志配置提供默认值
+        config_data['logging'].setdefault('LOG_LEVEL', 'INFO')
+        config_data['logging'].setdefault('LOG_TO_FILE', False)
+        config_data['logging'].setdefault('LOG_FILE_PATH', 'taobao_utils.log')
+
         return config_data
     except Exception as e:
         # 使用标准错误输出，因为此时可能还没有配置好logger
@@ -42,7 +52,7 @@ def setup_logging(config_data):
             'ERROR': Fore.RED,
             'CRITICAL': Fore.RED,
             'DEBUG': Fore.CYAN,
-            'INFO': Fore.GREEN,  # 将INFO级别也设置为绿色，与成功响应一致
+            'INFO': Fore.WHITE,
         }
 
         def format(self, record):
@@ -57,24 +67,24 @@ def setup_logging(config_data):
                 return self.COLORS[levelname] + log_message + Style.RESET_ALL
             return log_message
 
-    # 配置日志
-    logger = logging.getLogger(__name__)
-    logger.setLevel(
-        getattr(logging, config_data['logging']['LOG_LEVEL'].upper(), logging.INFO))
+    # 设置根日志记录器的级别为 WARNING，以抑制第三方库的 INFO/DEBUG 日志
+    logging.getLogger().setLevel(logging.WARNING)
+
+    # 配置我们自己的日志记录器
+    logger = logging.getLogger('taobaoutils')
+    logger.setLevel(getattr(logging, config_data['logging']['LOG_LEVEL'].upper(), logging.INFO))
 
     # 移除所有现有的处理器，避免重复输出
     if logger.hasHandlers():
         logger.handlers.clear()
 
+    # 创建并配置处理器
     if config_data['logging']['LOG_TO_FILE']:
-        handler = logging.FileHandler(
-            config_data['logging']['LOG_FILE_PATH'], encoding='utf-8')
-        formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s')
+        handler = logging.FileHandler(config_data['logging']['LOG_FILE_PATH'], encoding='utf-8')
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     else:
         handler = logging.StreamHandler(sys.stdout)
-        formatter = ColoredFormatter(
-            '%(asctime)s - %(levelname)s - %(message)s')
+        formatter = ColoredFormatter('%(asctime)s - %(levelname)s - %(message)s')
 
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -139,6 +149,8 @@ def load_excel_data(config_data, logger):
     """
     try:
         df = pd.read_excel(config_data['EXCEL_FILE_PATH'], engine='openpyxl')
+        logger.info("成功加载Excel文件: %s", config_data['EXCEL_FILE_PATH'])
+        
         # 确保必要的列存在，如果不存在则创建
         for col in [config_data['STATUS_COLUMN'], config_data['SEND_TIME_COLUMN'], config_data['RESPONSE_COLUMN']]:
             if col not in df.columns:

@@ -1,29 +1,21 @@
 import sys
 import argparse
-import logging
 from pathlib import Path
-from taobaoutils.app import create_app
+import pandas as pd
+from taobaoutils import logger
 from taobaoutils.utils import (
     load_config,
-    setup_logging,
     load_excel_data,
     validate_columns,
     process_row,
     save_dataframe
 )
-import toml
-import os
-import pandas as pd
-
-
-# 设置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 
 def start_server(host='127.0.0.1', port=5000, debug=False):
     """启动Flask服务器"""
     logger.info("Starting server on %s:%s", host, port)
+    from taobaoutils.app import create_app
     app = create_app()
     app.run(host=host, port=port, debug=debug)
 
@@ -31,20 +23,17 @@ def start_server(host='127.0.0.1', port=5000, debug=False):
 def process_xlsx(file_path):
     """处理XLSX文件"""
     # 这里我们会复用原始main.py中的逻辑来处理Excel文件
+    # 使用全局 logger
+    config_data = load_config()
+    
     try:
         logger.info("Processing Excel file: %s", file_path)
-        
-        # 加载配置
-        config_data = load_config()
         
         # 更新配置中的文件路径
         config_data['EXCEL_FILE_PATH'] = file_path
         
-        # 设置日志记录器
-        excel_logger = setup_logging(config_data)
-        
-        df = load_excel_data(config_data, excel_logger)
-        validate_columns(df, config_data, excel_logger)
+        df = load_excel_data(config_data, logger)
+        validate_columns(df, config_data, logger)
         
         total_rows = len(df)
         logger.info("Successfully loaded %s rows from '%s'", total_rows, file_path)
@@ -59,10 +48,10 @@ def process_xlsx(file_path):
         processed_count = 0
         for index, row in df.iterrows():
             new_last_send_time, processed = process_row(
-                df, index, row, last_send_time, config_data, excel_logger)
+                df, index, row, last_send_time, config_data, logger)
             if processed:
                 last_send_time = new_last_send_time
-                save_dataframe(df, index, config_data, excel_logger)  # 每次处理完一行就保存
+                save_dataframe(df, index, config_data, logger)  # 每次处理完一行就保存
                 processed_count += 1
                 
         logger.info("Processed %s rows. All done.", processed_count)
@@ -93,6 +82,7 @@ def main():
         start_server(args.host, args.port, args.debug)
     elif args.command == 'process':
         if not Path(args.file).exists():
+            # 为错误消息创建一个基本的日志记录器
             logger.error("Error: File '%s' does not exist", args.file)
             sys.exit(1)
         process_xlsx(args.file)

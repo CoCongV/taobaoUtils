@@ -67,6 +67,22 @@ class UserResource(Resource):
         """获取当前用户信息"""
         user = current_user()
         return {'user': user.to_dict()}, 200
+    
+    @auth_required
+    def put(self):
+        """更新当前用户信息，包括设置token"""
+        user = current_user()
+        parser = reqparse.RequestParser()
+        parser.add_argument('token', type=str, required=False)
+        args = parser.parse_args()
+        
+        # 更新用户token
+        if args['token']:
+            user.set_token(args['token'])
+            db.session.commit()
+            return {'message': '用户token更新成功', 'user': user.to_dict()}, 200
+        
+        return {'message': '没有更新任何信息'}, 200
 
 
 class UsersResource(Resource):

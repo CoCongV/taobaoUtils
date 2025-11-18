@@ -30,7 +30,7 @@ RANDOM_INTERVAL_SECONDS_MAX = 15
 [logging]
 LOG_TO_FILE = false
 LOG_FILE_PATH = "app.log"
-LOG_LEVEL = "INFO" # 可选: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL = "DEBUG" # 可选: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 # 请求的-d参数，占位符 {url} 将被替换为从 Excel 中读取的 URL
 [request_payload_template]

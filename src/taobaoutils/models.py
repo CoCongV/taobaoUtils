@@ -1,7 +1,8 @@
 from taobaoutils.app import db
-from flask_praetorian import UserMixin
+from flask_praetorian import SQLAlchemyUserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+
 
 class ProcessTask(db.Model):
     """处理任务模型"""
@@ -33,7 +34,8 @@ class ProcessTask(db.Model):
     def __repr__(self):
         return f'<ProcessTask {self.id}: {self.url}>'
 
-class User(UserMixin, db.Model):
+
+class User(SQLAlchemyUserMixin, db.Model):
     """用户模型"""
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -41,6 +43,10 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True, server_default='true')
+    
+    # 添加token字段
+    token = db.Column(db.String(255), nullable=True)
+    token_updated_at = db.Column(db.DateTime, nullable=True)
     
     def set_password(self, password):
         """设置用户密码"""
@@ -50,29 +56,10 @@ class User(UserMixin, db.Model):
         """检查用户密码"""
         return check_password_hash(self.password_hash, password)
     
-    @property
-    def rolenames(self):
-        """返回用户角色列表"""
-        return []
-    
-    @classmethod
-    def lookup(cls, username):
-        """根据用户名查找用户"""
-        return cls.query.filter_by(username=username).one_or_none()
-    
-    @classmethod
-    def identify(cls, id):
-        """根据ID查找用户"""
-        return cls.query.get(id)
-    
-    @property
-    def identity(self):
-        """返回用户ID"""
-        return self.id
-    
-    def is_valid(self):
-        """检查用户是否有效"""
-        return self.is_active
+    def set_token(self, token):
+        """设置用户token"""
+        self.token = token
+        self.token_updated_at = datetime.utcnow()
     
     def to_dict(self):
         """将模型转换为字典"""
@@ -80,8 +67,11 @@ class User(UserMixin, db.Model):
             'id': self.id,
             'username': self.username,
             'email': self.email,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'token_updated_at': self.token_updated_at.isoformat() if self.token_updated_at else None
         }
     
     def __repr__(self):
         return f'<User {self.username}>'
+
+
