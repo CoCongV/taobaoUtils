@@ -23,12 +23,9 @@ class ProductListingResource(Resource): # Renamed class
     @auth_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('url', type=str, required=False, help='URL') # Made optional
         parser.add_argument('status', type=str, required=False, help='Status') # Made optional
         parser.add_argument('response_content', type=str, required=False)
         parser.add_argument('response_code', type=int, required=False)
-        
-        # New arguments for ProductListing
         parser.add_argument('product_id', type=str, required=False)
         parser.add_argument('product_link', type=str, required=False)
         parser.add_argument('title', type=str, required=False)
@@ -39,7 +36,7 @@ class ProductListingResource(Resource): # Renamed class
 
         # Changed RequestLog to ProductListing
         new_listing = ProductListing(
-            url=args['url'],
+            # Removed url=args['url']
             status=args['status'],
             send_time=datetime.utcnow(),
             response_content=args['response_content'],
@@ -52,7 +49,7 @@ class ProductListingResource(Resource): # Renamed class
         )
         db.session.add(new_listing)
         db.session.commit()
-        logger.info("New product listing added: %s", new_listing.product_id or new_listing.url)
+        logger.info("New product listing added: %s", new_listing.product_id or new_listing.product_link) # Updated to use product_link
         return new_listing.to_dict(), 201
 
 

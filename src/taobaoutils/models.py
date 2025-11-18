@@ -107,7 +107,7 @@ class ProductListing(db.Model):
     __tablename__ = 'product_listings' # Renamed table
 
     id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(500), nullable=True) # Made nullable as it might not always be present for product listings
+    # url = db.Column(db.String(500), nullable=True) # Removed as product_link serves the same purpose
     status = db.Column(db.String(50), nullable=True) # Made nullable
     send_time = db.Column(db.DateTime, default=datetime.utcnow)
     response_content = db.Column(db.Text, nullable=True)
@@ -121,12 +121,11 @@ class ProductListing(db.Model):
     listing_code = db.Column(db.String(255), nullable=True)
     
     def __repr__(self):
-        return f"<ProductListing {self.id} - {self.product_id or self.url}>"
+        return f"<ProductListing {self.id} - {self.product_id or self.product_link}>" # Updated to use product_link
 
     def to_dict(self):
         return {
             "id": self.id,
-            "url": self.url,
             "status": self.status,
             "send_time": self.send_time.isoformat() if self.send_time else None,
             "response_content": self.response_content,
