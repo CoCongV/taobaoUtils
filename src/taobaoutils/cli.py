@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from taobaoutils import logger
+from taobaoutils.app import create_app
 from taobaoutils.utils import (
     load_config,
     load_excel_data,
@@ -15,7 +16,6 @@ from taobaoutils.utils import (
 def start_server(host='127.0.0.1', port=5000, debug=False):
     """启动Flask服务器"""
     logger.info("Starting server on %s:%s", host, port)
-    from taobaoutils.app import create_app
     app = create_app()
     app.run(host=host, port=port, debug=debug)
 
