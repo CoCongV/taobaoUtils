@@ -21,7 +21,7 @@ def send_request(target_url, payload, cookies: Optional[str] = None):
     # 合并自定义请求头
     if 'custom_headers' in config_data and isinstance(config_data['custom_headers'], dict):
         headers.update(config_data['custom_headers'])
-    
+
     # 添加 Cookie 头
     if cookies:
         headers['Cookie'] = cookies
@@ -29,7 +29,7 @@ def send_request(target_url, payload, cookies: Optional[str] = None):
     else:
         appname_cookie = config_data.get('Appname')
         token_cookie = config_data.get('Token')
-        
+
         if appname_cookie and token_cookie:
             headers['Cookie'] = f"appname={appname_cookie}; token={token_cookie}"
             logger.info("已添加从 config_data 构建的 Cookie 头: %s", headers['Cookie'])
@@ -37,7 +37,7 @@ def send_request(target_url, payload, cookies: Optional[str] = None):
             logger.warning("config_data 中只配置了部分 Cookie 值 (Appname 或 Token)，Cookie 头未完整添加。")
         else:
             logger.info("config_data 中未配置 Cookie 值，未添加 Cookie 头。")
-    
+
     response_content = ""
     try:
         logger.info("准备发送的请求体: %s", json.dumps(payload, indent=2, ensure_ascii=False))
