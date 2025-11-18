@@ -16,12 +16,14 @@ except Exception as e:
     # 如果配置文件尚未存在或加载失败，则创建一个基本的日志记录器
     logger = logging.getLogger('taobaoutils')
     logger.setLevel(logging.INFO)
-    
+
     # 添加处理器（如果没有）
     if not logger.handlers:
         handler = logging.StreamHandler()
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+    logger.warning(f"Failed to init logger: {e}")
 
 __all__ = ['create_app', 'db', 'ProcessTask', 'User', 'logger']

@@ -53,5 +53,5 @@ def create_app():
     # 创建数据库表
     with app.app_context():
         db.create_all()
- 
+
     return app
