@@ -103,16 +103,25 @@ class User(db.Model, SQLAlchemyUserMixin):
         }
 
 
-class RequestLog(db.Model):
+class ProductListing(db.Model):
+    __tablename__ = 'product_listings' # Renamed table
+
     id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(500), nullable=False)
-    status = db.Column(db.String(50), nullable=False)
+    url = db.Column(db.String(500), nullable=True) # Made nullable as it might not always be present for product listings
+    status = db.Column(db.String(50), nullable=True) # Made nullable
     send_time = db.Column(db.DateTime, default=datetime.utcnow)
     response_content = db.Column(db.Text, nullable=True)
     response_code = db.Column(db.Integer, nullable=True)
+
+    # New columns for product listing information
+    product_id = db.Column(db.String(255), nullable=True)
+    product_link = db.Column(db.String(500), nullable=True)
+    title = db.Column(db.String(500), nullable=True)
+    stock = db.Column(db.Integer, nullable=True)
+    listing_code = db.Column(db.String(255), nullable=True)
     
     def __repr__(self):
-        return f"<RequestLog {self.id} - {self.url}>"
+        return f"<ProductListing {self.id} - {self.product_id or self.url}>"
 
     def to_dict(self):
         return {
@@ -121,5 +130,10 @@ class RequestLog(db.Model):
             "status": self.status,
             "send_time": self.send_time.isoformat() if self.send_time else None,
             "response_content": self.response_content,
-            "response_code": self.response_code
+            "response_code": self.response_code,
+            "product_id": self.product_id,
+            "product_link": self.product_link,
+            "title": self.title,
+            "stock": self.stock,
+            "listing_code": self.listing_code,
         }
