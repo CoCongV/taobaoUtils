@@ -8,6 +8,7 @@ from colorama import Fore, Style, init
 # Initialize Colorama for specific colored output (not for general logging)
 init()
 
+
 # --- Configuration Loading ---
 def load_config():
     try:
@@ -20,10 +21,13 @@ def load_config():
         print(f"错误：加载 config.toml 文件失败: {e}")
         sys.exit(1)
 
+
 config_data = load_config()
 
 # --- Logging Setup ---
 # 自定义日志格式化器，用于彩色输出
+
+
 class ColoredFormatter(logging.Formatter):
     COLORS = {
         'WARNING': Fore.YELLOW,
@@ -45,6 +49,7 @@ class ColoredFormatter(logging.Formatter):
             return self.COLORS[levelname] + log_message + Style.RESET_ALL
         return log_message
 
+
 def setup_logging():
     logger = logging.getLogger(__name__)
     logger.setLevel(getattr(logging, config_data['logging']['LOG_LEVEL'].upper(), logging.INFO))
@@ -63,5 +68,6 @@ def setup_logging():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     return logger
+
 
 logger = setup_logging()
