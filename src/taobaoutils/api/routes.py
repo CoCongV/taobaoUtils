@@ -1,5 +1,6 @@
 from taobaoutils.api.resources import ProductListingResource, ExcelUploadResource # Added ExcelUploadResource
 from taobaoutils.api.auth import RegisterResource, LoginResource, RefreshResource, UserResource, UsersResource
+from taobaoutils.api.request_config import RequestConfigListResource, RequestConfigResource
 
 
 def initialize_routes(api):
@@ -13,3 +14,7 @@ def initialize_routes(api):
     # 业务相关路由
     api.add_resource(ProductListingResource, '/api/product-listings', '/api/product-listings/<int:log_id>') # Renamed endpoint and resource
     api.add_resource(ExcelUploadResource, '/api/product-listings/upload') # New endpoint for Excel upload
+
+    # RequestConfig routes
+    api.add_resource(RequestConfigListResource, '/api/request-configs')
+    api.add_resource(RequestConfigResource, '/api/request-configs/<int:config_id>')
