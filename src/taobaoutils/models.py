@@ -124,6 +124,10 @@ class ProductListing(db.Model):
 
     # Foreign key to User model
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Foreign key to RequestConfig model
+    request_config_id = db.Column(db.Integer, db.ForeignKey('request_configs.id'), nullable=True)
+    request_config = db.relationship('RequestConfig', backref='product_listings', lazy=True)
     
     def __repr__(self):
         return f"<ProductListing {self.id} - {self.product_id or self.product_link}>" # Updated to use product_link
@@ -141,4 +145,52 @@ class ProductListing(db.Model):
             "stock": self.stock,
             "listing_code": self.listing_code,
             "user_id": self.user_id, # Added user_id
+            "request_config_id": self.request_config_id,
+        }
+
+
+class RequestConfig(db.Model):
+    __tablename__ = 'request_configs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    taobao_token = db.Column(db.Text, nullable=True)
+    payload = db.Column(db.Text, nullable=True) # Stored as JSON string
+    cookie = db.Column(db.Text, nullable=True) # Stored as JSON string
+
+    user = db.relationship('User', backref='request_configs', lazy=True)
+
+    def __init__(self, user_id, name, taobao_token=None, payload=None, cookie=None):
+        self.user_id = user_id
+        self.name = name
+        self.taobao_token = taobao_token
+        self.payload = json.dumps(payload) if payload else None
+        self.cookie = json.dumps(cookie) if cookie else None
+
+    def __repr__(self):
+        return f"<RequestConfig {self.id} - {self.name}>"
+
+    def to_dict(self):
+        payload_obj = None
+        if self.payload:
+            try:
+                payload_obj = json.loads(self.payload)
+            except json.JSONDecodeError:
+                pass
+        
+        cookie_obj = None
+        if self.cookie:
+            try:
+                cookie_obj = json.loads(self.cookie)
+            except json.JSONDecodeError:
+                pass
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "name": self.name,
+            "taobao_token": self.taobao_token,
+            "payload": payload_obj,
+            "cookie": cookie_obj,
         }

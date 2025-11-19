@@ -1,3 +1,7 @@
+import requests # Import requests for making HTTP requests
+import json # import json
+import random # import random
+
 from flask_restful import Resource, reqparse
 from flask_praetorian import auth_required, current_user # Added current_user
 from taobaoutils.app import db
@@ -6,6 +10,103 @@ from taobaoutils import config_data, logger
 from datetime import datetime
 from werkzeug.datastructures import FileStorage # Added for file uploads
 import pandas as pd # Added for Excel processing
+
+
+def _get_payload_from_listing(product_listing):
+    """
+    Helper function to generate payload from a ProductListing object.
+    This logic is similar to process_row_logic.
+    """
+    url = product_listing.product_link
+    payload_template = config_data['request_payload_template']
+    
+    current_payload = json.loads(json.dumps(payload_template)) # Deep copy
+
+    if "linkData" in current_payload and isinstance(current_payload["linkData"], list) and current_payload["linkData"]:
+        num_iid = ""
+        try:
+            if "id=" in url:
+                num_iid = url.split("id=")[1].split("&")[0]
+        except Exception:
+            logger.warning("无法从URL '%s' 中提取商品ID。", url)
+
+        if current_payload["linkData"][0]["url"] == "{url}":
+            current_payload["linkData"][0]["url"] = url
+        
+        current_payload["linkData"][0]["num_iid"] = num_iid if num_iid else current_payload["linkData"][0].get("num_iid", "")
+    
+    return current_payload
+
+def _send_single_task_to_scheduler(product_listing):
+    """
+    Sends a single product listing task to the scheduler service.
+    """
+    scheduler_url = config_data['scheduler']['SCHEDULER_SERVICE_URL']
+    if not scheduler_url:
+        logger.error("SCHEDULER_SERVICE_URL not configured.")
+        return False
+    
+    task_url = scheduler_url.rstrip('/') + '/add_req_task'
+    
+    payload = _get_payload_from_listing(product_listing)
+    cookie = config_data.get('custom_headers', {})
+    target_url = config_data.get('TARGET_URL')
+    
+    task_data = {
+        'cookie': cookie,
+        'payload': payload,
+        'target_url': target_url,
+        'send_time': datetime.utcnow().timestamp()
+    }
+    
+    try:
+        response = requests.post(task_url, json=task_data, timeout=10)
+        response.raise_for_status()
+        logger.info("Successfully sent single task to scheduler for listing ID: %s", product_listing.id)
+        return True
+    except requests.exceptions.RequestException as e:
+        logger.error("Failed to send single task to scheduler for listing ID %s: %s", product_listing.id, e)
+        return False
+
+def _send_batch_tasks_to_scheduler(product_listings):
+    """
+    Sends a batch of product listing tasks to the scheduler service.
+    """
+    scheduler_url = config_data['scheduler']['SCHEDULER_SERVICE_URL']
+    if not scheduler_url:
+        logger.error("SCHEDULER_SERVICE_URL not configured.")
+        return False
+
+    task_url = scheduler_url.rstrip('/') + '/add_req_tasks'
+    
+    payloads = [_get_payload_from_listing(listing) for listing in product_listings]
+    cookie = config_data.get('custom_headers', {})
+    target_url = config_data.get('TARGET_URL')
+    
+    request_interval_minutes = config_data.get('REQUEST_INTERVAL_MINUTES', 8)
+    random_min = config_data.get('RANDOM_INTERVAL_SECONDS_MIN', 2)
+    random_max = config_data.get('RANDOM_INTERVAL_SECONDS_MAX', 15)
+    
+    interval_seconds = (request_interval_minutes * 60) + random.uniform(random_min, random_max)
+
+    task_data = {
+        'cookie': cookie,
+        'payloads': payloads,
+        'target_url': target_url,
+        'interval_seconds': interval_seconds,
+        'request_interval_minutes': request_interval_minutes,
+        'random_interval_seconds_min': random_min,
+        'random_interval_seconds_max': random_max,
+    }
+
+    try:
+        response = requests.post(task_url, json=task_data, timeout=30)
+        response.raise_for_status()
+        logger.info("Successfully sent batch of %d tasks to scheduler.", len(product_listings))
+        return True
+    except requests.exceptions.RequestException as e:
+        logger.error("Failed to send batch tasks to scheduler: %s", e)
+        return False
 
 
 class ProductListingResource(Resource): # Renamed class
@@ -51,6 +152,15 @@ class ProductListingResource(Resource): # Renamed class
         db.session.add(new_listing)
         db.session.commit()
         logger.info("New product listing added for user %s: %s", current_user().id, new_listing.product_id or new_listing.product_link) # Updated to use product_link
+        
+        # After successfully adding to DB, send to scheduler service
+        if _send_single_task_to_scheduler(new_listing):
+            new_listing.status = "是否完成" # Set status to "whether completed"
+            db.session.commit()
+            logger.info("Product listing %s status updated to '是否完成' after sending to scheduler.", new_listing.id)
+        else:
+            logger.warning("Product listing %s failed to send to scheduler service. Status remains as before.", new_listing.id)
+
         return new_listing.to_dict(), 201
 
 
@@ -97,7 +207,19 @@ class ExcelUploadResource(Resource):
                 db.session.add(new_listing)
                 new_listings.append(new_listing)
             
-            db.session.commit()
+            db.session.commit() # Commit all new listings
+            
+            # After committing, send each new listing to the scheduler service
+            if _send_batch_tasks_to_scheduler(new_listings):
+                for listing in new_listings:
+                    listing.status = "是否完成" # Set status to "whether completed"
+                    db.session.add(listing) # Re-add to session for update
+                db.session.commit() # Commit status updates
+                logger.info("Batch of %d product listings status updated to '是否完成' after sending to scheduler.", len(new_listings))
+            else:
+                logger.warning("Batch of %d product listings from Excel failed to send to scheduler service. Status remains as before.", len(new_listings))
+
+            
             logger.info("Successfully uploaded and processed %d product listings from Excel for user %s.", len(new_listings), current_user().id)
             return {'message': f'Successfully uploaded and processed {len(new_listings)} product listings.'}, 201
             
