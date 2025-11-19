@@ -30,6 +30,9 @@ class User(db.Model, SQLAlchemyUserMixin):
     # Praetorian 需要的属性
     roles = db.Column(db.Text, nullable=True)  # 可以存储JSON格式的角色列表
 
+    # Relationship to ProductListing
+    product_listings = db.relationship('ProductListing', backref='user', lazy=True)
+
     def __init__(self, username, email, password=None, sub_user=None, userids=None, filter_copied=True, copy_type=1, param_id=None, is_search="0", **kwargs):
         self.username = username
         self.email = email
@@ -107,7 +110,6 @@ class ProductListing(db.Model):
     __tablename__ = 'product_listings' # Renamed table
 
     id = db.Column(db.Integer, primary_key=True)
-    # url = db.Column(db.String(500), nullable=True) # Removed as product_link serves the same purpose
     status = db.Column(db.String(50), nullable=True) # Made nullable
     send_time = db.Column(db.DateTime, default=datetime.utcnow)
     response_content = db.Column(db.Text, nullable=True)
@@ -119,6 +121,9 @@ class ProductListing(db.Model):
     title = db.Column(db.String(500), nullable=True)
     stock = db.Column(db.Integer, nullable=True)
     listing_code = db.Column(db.String(255), nullable=True)
+
+    # Foreign key to User model
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     def __repr__(self):
         return f"<ProductListing {self.id} - {self.product_id or self.product_link}>" # Updated to use product_link
@@ -135,4 +140,5 @@ class ProductListing(db.Model):
             "title": self.title,
             "stock": self.stock,
             "listing_code": self.listing_code,
+            "user_id": self.user_id, # Added user_id
         }

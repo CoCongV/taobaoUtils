@@ -1,5 +1,5 @@
 from flask_restful import Resource, reqparse
-from flask_praetorian import auth_required
+from flask_praetorian import auth_required, current_user # Added current_user
 from taobaoutils.app import db
 from taobaoutils.models import ProductListing, User # Renamed RequestLog to ProductListing
 from taobaoutils import config_data, logger
@@ -11,13 +11,14 @@ import pandas as pd # Added for Excel processing
 class ProductListingResource(Resource): # Renamed class
     @auth_required
     def get(self, log_id=None):
+        user_id = current_user().id # Get current user's ID
         if log_id:
-            # Changed RequestLog to ProductListing
-            log = ProductListing.query.get_or_404(log_id) 
+            # Changed RequestLog to ProductListing and added user_id filter
+            log = ProductListing.query.filter_by(id=log_id, user_id=user_id).first_or_404() 
             return log.to_dict()
         else:
-            # Changed RequestLog to ProductListing
-            logs = ProductListing.query.order_by(ProductListing.send_time.desc()).all()
+            # Changed RequestLog to ProductListing and added user_id filter
+            logs = ProductListing.query.filter_by(user_id=user_id).order_by(ProductListing.send_time.desc()).all()
             return [log.to_dict() for log in logs]
 
     @auth_required
@@ -36,7 +37,6 @@ class ProductListingResource(Resource): # Renamed class
 
         # Changed RequestLog to ProductListing
         new_listing = ProductListing(
-            # Removed url=args['url']
             status=args['status'],
             send_time=datetime.utcnow(),
             response_content=args['response_content'],
@@ -45,11 +45,12 @@ class ProductListingResource(Resource): # Renamed class
             product_link=args['product_link'],
             title=args['title'],
             stock=args['stock'],
-            listing_code=args['listing_code']
+            listing_code=args['listing_code'],
+            user_id=current_user().id # Assign current user's ID
         )
         db.session.add(new_listing)
         db.session.commit()
-        logger.info("New product listing added: %s", new_listing.product_id or new_listing.product_link) # Updated to use product_link
+        logger.info("New product listing added for user %s: %s", current_user().id, new_listing.product_id or new_listing.product_link) # Updated to use product_link
         return new_listing.to_dict(), 201
 
 
@@ -90,13 +91,14 @@ class ExcelUploadResource(Resource):
                     stock=int(row[required_headers['库存']]) if pd.notna(row[required_headers['库存']]) else None,
                     listing_code=str(row[required_headers['上架编码']]) if pd.notna(row[required_headers['上架编码']]) else None,
                     send_time=datetime.utcnow(), # Default send_time
-                    status="Uploaded" # Default status for uploaded items
+                    status="Uploaded", # Default status for uploaded items
+                    user_id=current_user().id # Assign current user's ID
                 )
                 db.session.add(new_listing)
                 new_listings.append(new_listing)
             
             db.session.commit()
-            logger.info("Successfully uploaded and processed %d product listings from Excel.", len(new_listings))
+            logger.info("Successfully uploaded and processed %d product listings from Excel for user %s.", len(new_listings), current_user().id)
             return {'message': f'Successfully uploaded and processed {len(new_listings)} product listings.'}, 201
             
         except Exception as e:
