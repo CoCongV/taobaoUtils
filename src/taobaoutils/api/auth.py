@@ -1,8 +1,56 @@
+from flask import request, jsonify, g
 from flask_restful import Resource, reqparse
 from flask_praetorian import auth_required, current_user
+import json
 
 from taobaoutils.app import db, guard
-from taobaoutils.models import User
+from taobaoutils.models import User, APIToken
+
+
+def api_token_required(func):
+    """
+    API Token认证装饰器，用于验证外部服务的API请求
+    检查Authorization header中的Bearer token
+    """
+    def wrapper(*args, **kwargs):
+        # 获取Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({'message': 'Authorization header is required'}), 401
+        
+        # 检查Bearer前缀
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'message': 'Invalid authorization header format'}), 401
+        
+        # 提取token
+        token = auth_header.split('Bearer ')[1]
+        
+        # 查找并验证token
+        # 由于我们只存储了哈希值，所以需要遍历所有token进行验证
+        all_tokens = APIToken.query.filter_by(is_active=True).all()
+        valid_token = None
+        
+        for api_token in all_tokens:
+            if api_token.verify_token(token):
+                valid_token = api_token
+                break
+        
+        if not valid_token:
+            return jsonify({'message': 'Invalid or expired API token'}), 401
+        
+        # 更新最后使用时间
+        valid_token.update_last_used()
+        
+        # 将token和用户信息存储在请求上下文中
+        g.api_token = valid_token
+        g.user = valid_token.user
+        
+        return func(*args, **kwargs)
+    
+    # 保留原始函数的文档字符串和元数据
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
 
 
 class RegisterResource(Resource):
@@ -172,3 +220,109 @@ class UsersResource(Resource):
         """获取所有用户"""
         users = User.query.all()
         return {'users': [user.to_dict() for user in users]}, 200
+
+
+class APITokenResource(Resource):
+    """API Token管理资源"""
+    
+    @auth_required
+    def get(self, token_id=None):
+        """
+        获取用户的API tokens或特定token信息
+        
+        Args:
+            token_id: 可选的token ID，如果提供则获取特定token
+        """
+        user = current_user()
+        
+        if token_id:
+            # 获取特定token
+            token = APIToken.query.filter_by(id=token_id, user_id=user.id).first()
+            if not token:
+                return {'message': 'Token not found'}, 404
+            return {'token': token.to_dict()}, 200
+        else:
+            # 获取所有token
+            tokens = APIToken.query.filter_by(user_id=user.id).all()
+            return {'tokens': [token.to_dict() for token in tokens]}, 200
+    
+    @auth_required
+    def post(self):
+        """创建新的API token"""
+        user = current_user()
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, required=True, help='Token name is required')
+        parser.add_argument('scopes', type=list, location='json', default=['read', 'write'])
+        parser.add_argument('expires_days', type=int, required=False)
+        args = parser.parse_args()
+        
+        # 生成token
+        token_value, token = APIToken.generate_token(
+            user_id=user.id,
+            name=args['name'],
+            scopes=args['scopes'],
+            expires_days=args['expires_days']
+        )
+        
+        # 保存到数据库
+        db.session.add(token)
+        db.session.commit()
+        
+        # 返回token信息，只在创建时显示完整token
+        return {
+            'token': {
+                'id': token.id,
+                'name': token.name,
+                'token': token_value,  # 只在创建时返回完整token
+                'display_token': f"{token.prefix}...{token.suffix}",
+                'scopes': token.get_scopes(),
+                'created_at': token.created_at.isoformat(),
+                'expires_at': token.expires_at.isoformat() if token.expires_at else None,
+            },
+            'message': '请妥善保存此token，它只会显示一次'
+        }, 201
+    
+    @auth_required
+    def put(self, token_id):
+        """
+        更新API token信息
+        - 可以启用/禁用token
+        - 可以更新名称
+        """
+        user = current_user()
+        token = APIToken.query.filter_by(id=token_id, user_id=user.id).first()
+        
+        if not token:
+            return {'message': 'Token not found'}, 404
+        
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, required=False)
+        parser.add_argument('is_active', type=bool, required=False)
+        parser.add_argument('scopes', type=list, location='json', required=False)
+        args = parser.parse_args()
+        
+        # 更新token信息
+        if args['name'] is not None:
+            token.name = args['name']
+        
+        if args['is_active'] is not None:
+            token.is_active = bool(args['is_active'])
+        
+        if args['scopes'] is not None:
+            token.scopes = json.dumps(args['scopes'])
+        
+        db.session.commit()
+        return {'token': token.to_dict()}, 200
+    
+    @auth_required
+    def delete(self, token_id):
+        """删除API token"""
+        user = current_user()
+        token = APIToken.query.filter_by(id=token_id, user_id=user.id).first()
+        
+        if not token:
+            return {'message': 'Token not found'}, 404
+        
+        db.session.delete(token)
+        db.session.commit()
+        return {'message': 'Token deleted successfully'}, 200

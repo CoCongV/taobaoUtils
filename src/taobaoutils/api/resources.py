@@ -1,15 +1,16 @@
-import requests # Import requests for making HTTP requests
-import json # import json
-import random # import random
+import requests
+import json
+import random
 
 from flask_restful import Resource, reqparse
-from flask_praetorian import auth_required, current_user # Added current_user
+from flask_praetorian import auth_required, current_user
 from taobaoutils.app import db
-from taobaoutils.models import ProductListing, User # Renamed RequestLog to ProductListing
+from taobaoutils.models import ProductListing, User
+from taobaoutils.api.auth import api_token_required
 from taobaoutils import config_data, logger
 from datetime import datetime
-from werkzeug.datastructures import FileStorage # Added for file uploads
-import pandas as pd # Added for Excel processing
+from werkzeug.datastructures import FileStorage
+import pandas as pd
 
 
 def _get_payload_from_listing(product_listing):
@@ -93,8 +94,7 @@ def _send_batch_tasks_to_scheduler(product_listings):
         'cookie': cookie,
         'payloads': payloads,
         'target_url': target_url,
-        'interval_seconds': interval_seconds,
-        'request_interval_minutes': request_interval_minutes,
+        'interval': interval_seconds,
         'random_interval_seconds_min': random_min,
         'random_interval_seconds_max': random_max,
     }
@@ -219,7 +219,6 @@ class ExcelUploadResource(Resource):
             else:
                 logger.warning("Batch of %d product listings from Excel failed to send to scheduler service. Status remains as before.", len(new_listings))
 
-            
             logger.info("Successfully uploaded and processed %d product listings from Excel for user %s.", len(new_listings), current_user().id)
             return {'message': f'Successfully uploaded and processed {len(new_listings)} product listings.'}, 201
             
@@ -227,3 +226,49 @@ class ExcelUploadResource(Resource):
             db.session.rollback()
             logger.error("Error processing Excel upload: %s", str(e))
             return {'message': f'Error processing Excel file: {str(e)}'}, 500
+
+
+class SchedulerCallbackResource(Resource):
+    @api_token_required
+    def post(self):
+        """
+        处理scheduler_service的回调请求，更新ProductListing的状态、响应内容和响应码
+        接收参数：id (int)、status (str)、response_code (int)、response_content (str)
+        需要使用API token进行认证访问
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument('id', type=int, required=True, help='ProductListing ID is required')
+        parser.add_argument('status', type=str, required=True, help='Status is required')
+        parser.add_argument('response_code', type=int, required=False, help='HTTP response code')
+        parser.add_argument('response_content', type=str, required=False, help='HTTP response content')
+        args = parser.parse_args()
+
+        try:
+            # 通过id查询ProductListing
+            product_listing = ProductListing.query.filter_by(id=args['id']).first()
+            if not product_listing:
+                logger.warning("ProductListing with ID %d not found.", args['id'])
+                return {'message': 'Product listing not found'}, 404
+
+            # 更新状态、响应码和响应内容
+            product_listing.status = args['status']
+
+            # 只有当提供了response_code和response_content时才更新
+            if args['response_code'] is not None:
+                product_listing.response_code = args['response_code']
+
+            if args['response_content'] is not None:
+                product_listing.response_content = args['response_content']
+                
+            # 更新时间
+            product_listing.updated_at = datetime.utcnow()
+
+            db.session.commit()
+            logger.info("ProductListing %d updated - Status: '%s', Response Code: %s by user %s",
+                        args['id'], args['status'], args.get('response_code', 'N/A'), product_listing.user_id)
+
+            return {'message': 'Status and response information updated successfully'}, 200
+        except Exception as e:
+            db.session.rollback()
+            logger.error("Error updating ProductListing %d: %s", args['id'], str(e))
+            return {'message': 'Internal server error'}, 500

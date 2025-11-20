@@ -10,7 +10,7 @@ init()
 
 
 # --- Configuration Loading ---
-def load_config():  
+def load_config(): 
     try:
         # config.toml 应该位于当前工作目录
         config_path = Path(os.getcwd()) / "config.toml"

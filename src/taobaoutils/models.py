@@ -1,5 +1,6 @@
 import json
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_praetorian import SQLAlchemyUserMixin
 
@@ -107,20 +108,21 @@ class User(db.Model, SQLAlchemyUserMixin):
 
 
 class ProductListing(db.Model):
+    """产品列表模型"""
     __tablename__ = 'product_listings' # Renamed table
 
     id = db.Column(db.Integer, primary_key=True)
-    status = db.Column(db.String(50), nullable=True) # Made nullable
+    status = db.Column(db.String(50), nullable=False, default='requested') # 修改默认值为'requested'
     send_time = db.Column(db.DateTime, default=datetime.utcnow)
-    response_content = db.Column(db.Text, nullable=True)
-    response_code = db.Column(db.Integer, nullable=True)
+    response_content = db.Column(db.Text, nullable=True)  # 存储API响应内容
+    response_code = db.Column(db.Integer, nullable=True)  # 存储API响应状态码
 
     # New columns for product listing information
     product_id = db.Column(db.String(255), nullable=True)
     product_link = db.Column(db.String(500), nullable=True)
     title = db.Column(db.String(500), nullable=True)
     stock = db.Column(db.Integer, nullable=True)
-    listing_code = db.Column(db.String(255), nullable=True)
+    seller_code = db.Column(db.String(255), nullable=True)  # 商家编码
 
     # Foreign key to User model
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -143,8 +145,8 @@ class ProductListing(db.Model):
             "product_link": self.product_link,
             "title": self.title,
             "stock": self.stock,
-            "listing_code": self.listing_code,
-            "user_id": self.user_id, # Added user_id
+            "seller_code": self.seller_code,  # 商家编码
+            "user_id": self.user_id,
             "request_config_id": self.request_config_id,
         }
 
@@ -193,4 +195,115 @@ class RequestConfig(db.Model):
             "taobao_token": self.taobao_token,
             "payload": payload_obj,
             "cookie": cookie_obj,
+        }
+
+
+class APIToken(db.Model):
+    """API Token模型，用于外部服务访问"""
+    __tablename__ = 'api_tokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    token_hash = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    name = db.Column(db.String(100), nullable=False)  # Token名称，方便用户识别
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    scopes = db.Column(db.Text, nullable=True)  # JSON格式存储权限范围
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)  # 可选的过期时间
+    last_used_at = db.Column(db.DateTime, nullable=True)  # 最后使用时间
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    prefix = db.Column(db.String(10), nullable=False)  # Token前缀，用于识别
+    suffix = db.Column(db.String(6), nullable=False)  # Token后缀，用于用户识别
+
+    # 关联到用户
+    user = db.relationship('User', backref=db.backref('api_tokens', lazy=True))
+
+    @staticmethod
+    def generate_token(user_id, name, scopes=None, expires_days=None):
+        """
+        生成新的API Token
+        
+        Args:
+            user_id: 用户ID
+            name: Token名称
+            scopes: 权限范围列表
+            expires_days: 过期天数，None表示永不过期
+            
+        Returns:
+            tuple: (原始token字符串, APIToken对象)
+        """
+        # 生成安全的随机token
+        token_bytes = secrets.token_urlsafe(32)  # 生成安全的随机字符串
+        
+        # 创建前缀和后缀用于显示（不用于验证）
+        prefix = token_bytes[:10]
+        suffix = token_bytes[-6:]
+        
+        # 计算过期时间
+        expires_at = None
+        if expires_days:
+            expires_at = datetime.utcnow() + timedelta(days=expires_days)
+        
+        # 生成哈希值用于存储
+        token_hash = generate_password_hash(token_bytes)
+        
+        # 创建token记录
+        token = APIToken(
+            token_hash=token_hash,
+            name=name,
+            user_id=user_id,
+            scopes=json.dumps(scopes) if scopes else None,
+            expires_at=expires_at,
+            prefix=prefix,
+            suffix=suffix
+        )
+        
+        return token_bytes, token
+
+    def verify_token(self, token):
+        """
+        验证token是否有效
+        
+        Args:
+            token: 待验证的token字符串
+            
+        Returns:
+            bool: token是否有效
+        """
+        # 检查token是否激活
+        if not self.is_active:
+            return False
+        
+        # 检查token是否过期
+        if self.expires_at and datetime.utcnow() > self.expires_at:
+            return False
+        
+        # 验证token哈希
+        return check_password_hash(self.token_hash, token)
+
+    def update_last_used(self):
+        """更新最后使用时间"""
+        self.last_used_at = datetime.utcnow()
+        db.session.commit()
+
+    def get_scopes(self):
+        """获取权限范围列表"""
+        if self.scopes:
+            try:
+                return json.loads(self.scopes)
+            except Exception:
+                pass
+        return []
+
+    def to_dict(self):
+        """转换为字典格式，不包含完整token"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'display_token': f"{self.prefix}...{self.suffix}",
+            'user_id': self.user_id,
+            'scopes': self.get_scopes(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
+            'is_active': self.is_active
         }
