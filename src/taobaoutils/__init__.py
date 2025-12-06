@@ -1,5 +1,5 @@
 import logging
-import toml
+import tomllib
 import sys
 import os
 from pathlib import Path
@@ -16,7 +16,9 @@ def load_config():
         config_path = Path(os.getcwd()) / "config.toml"
         if not config_path.exists():
             raise FileNotFoundError(f"config.toml 文件未找到于: {config_path}")
-        return toml.load(config_path)
+        # 使用tomllib.load，需要传入文件对象
+        with config_path.open('rb') as f:
+            return tomllib.load(f)
     except Exception as e:
         print(f"错误：加载 config.toml 文件失败: {e}")
         sys.exit(1)

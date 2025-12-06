@@ -159,20 +159,51 @@ class RequestConfig(db.Model):
     name = db.Column(db.String(255), nullable=False)
     taobao_token = db.Column(db.Text, nullable=True)
     payload = db.Column(db.Text, nullable=True) # Stored as JSON string
-    cookie = db.Column(db.Text, nullable=True) # Stored as JSON string
+    header = db.Column(db.Text, nullable=True) # Stored as JSON string for HTTP headers
 
     user = db.relationship('User', backref='request_configs', lazy=True)
 
-    def __init__(self, user_id, name, taobao_token=None, payload=None, cookie=None):
+    def __init__(self, user_id, name, taobao_token=None, payload=None, header=None):
         self.user_id = user_id
         self.name = name
         self.taobao_token = taobao_token
         self.payload = json.dumps(payload) if payload else None
-        self.cookie = json.dumps(cookie) if cookie else None
+        self.header = json.dumps(header) if header else None
 
     def __repr__(self):
         return f"<RequestConfig {self.id} - {self.name}>"
-
+    
+    def set_cookie(self, cookie_data):
+        """
+        将cookie数据存入header字段中
+        
+        Args:
+            cookie_data: 字典格式的cookie数据
+        """
+        # 获取现有的header数据
+        headers = {}
+        if self.header:
+            try:
+                headers = json.loads(self.header)
+            except json.JSONDecodeError:
+                pass
+        
+        # 处理cookie数据并添加到header中
+        if cookie_data:
+            # 检查cookie_data是字典还是字符串
+            if isinstance(cookie_data, dict):
+                # 如果是字典，将其格式化为字符串
+                cookie_str = '; '.join([f'{key}={value}' for key, value in cookie_data.items()])
+            else:
+                # 如果已经是字符串，直接使用
+                cookie_str = str(cookie_data)
+            
+            # 将cookie添加到header中
+            headers['Cookie'] = cookie_str
+            
+            # 保存更新后的header
+            self.header = json.dumps(headers)
+    
     def to_dict(self):
         payload_obj = None
         if self.payload:
@@ -181,10 +212,10 @@ class RequestConfig(db.Model):
             except json.JSONDecodeError:
                 pass
         
-        cookie_obj = None
-        if self.cookie:
+        header_obj = None
+        if self.header:
             try:
-                cookie_obj = json.loads(self.cookie)
+                header_obj = json.loads(self.header)
             except json.JSONDecodeError:
                 pass
 
@@ -194,7 +225,7 @@ class RequestConfig(db.Model):
             "name": self.name,
             "taobao_token": self.taobao_token,
             "payload": payload_obj,
-            "cookie": cookie_obj,
+            "header": header_obj,
         }
 
 

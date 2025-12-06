@@ -12,7 +12,7 @@ class RequestConfigListResource(Resource):
         self.parser.add_argument('name', type=str, required=True, help='Name is required')
         self.parser.add_argument('taobao_token', type=str, required=False)
         self.parser.add_argument('payload', type=dict, required=False)
-        self.parser.add_argument('cookie', type=dict, required=False)
+        self.parser.add_argument('header', type=dict, required=False)
 
     @auth_required
     def get(self):
@@ -30,7 +30,7 @@ class RequestConfigListResource(Resource):
             name=args['name'],
             taobao_token=args['taobao_token'],
             payload=args['payload'],
-            cookie=args['cookie']
+            header=args['header']
         )
         
         db.session.add(new_config)
@@ -45,7 +45,7 @@ class RequestConfigResource(Resource):
         self.parser.add_argument('name', type=str, required=False)
         self.parser.add_argument('taobao_token', type=str, required=False)
         self.parser.add_argument('payload', type=dict, required=False)
-        self.parser.add_argument('cookie', type=dict, required=False)
+        self.parser.add_argument('header', type=dict, required=False)
 
     @auth_required
     def get(self, config_id):
@@ -65,8 +65,8 @@ class RequestConfigResource(Resource):
             config.taobao_token = args['taobao_token']
         if args['payload']:
             config.payload = json.dumps(args['payload'])
-        if args['cookie']:
-            config.cookie = json.dumps(args['cookie'])
+        if args['header']:
+            config.header = json.dumps(args['header'])
             
         db.session.commit()
         
