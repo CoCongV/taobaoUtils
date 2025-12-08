@@ -2,11 +2,9 @@
 name = "taobaoutils"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Your Name",email = "you@example.com"}
-]
+authors = [{ name = "Your Name", email = "you@example.com" }]
 readme = "README.md"
-requires-python = "=3.13.7"
+requires-python = "==3.13.7"
 dependencies = [
     "requests (>=2.32.5,<3.0.0)",
     "pandas (>=2.3.3,<3.0.0)",
@@ -17,11 +15,11 @@ dependencies = [
     "Flask-RESTful (>=0.3.10,<0.4.0)",
     "gunicorn (>=22.0.0,<23.0.0)",
     "python-dotenv (>=1.0.1,<2.0.0)",
-    "flask-praetorian (>=1.1.0,<2.0.0)"
+    "flask-praetorian (>=1.1.0,<2.0.0)",
 ]
 
 [tool.poetry]
-packages = [{include = "taobaoutils", from = "src"}]
+packages = [{ include = "taobaoutils", from = "src" }]
 
 [tool.poetry.scripts]
 tb = "taobaoutils.cli:main"
@@ -29,3 +27,16 @@ tb = "taobaoutils.cli:main"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+# 也就是单行最大长度，现在的宽屏一般设 100 或 120
+line-length = 120
+
+[tool.ruff.lint]
+# 开启的规则集：
+# E: pycodestyle (错误)
+# F: Pyflakes (逻辑)
+# I: isort (导入排序)
+# B: flake8-bugbear (潜在Bug)
+# UP: pyupgrade (自动升级旧语法，比如把 List[str] 变成 list[str])
+select = ["E", "F", "I", "B", "UP"]

@@ -54,4 +54,4 @@ Thumbs.db
 # test file
 *.xlsx
 
-config.toml
+config.toml.marscode/
