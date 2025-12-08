@@ -1,4 +1,4 @@
-mport json
+import json
 import random
 import sys
 import time
@@ -9,7 +9,6 @@ from colorama import init
 
 from taobaoutils import config_data, logger
 from taobaoutils.utils import send_request
-
 
 # Initialize Colorama for specific colored output (not for general logging)
 init()
@@ -32,14 +31,10 @@ def load_excel_data(excel_file_path):
             if col not in df.columns:
                 df[col] = ""
         # 将时间列转换为 datetime 对象，以便进行比较
-        df[config_data["SEND_TIME_COLUMN"]] = pd.to_datetime(
-            df[config_data["SEND_TIME_COLUMN"]], errors="coerce"
-        )
+        df[config_data["SEND_TIME_COLUMN"]] = pd.to_datetime(df[config_data["SEND_TIME_COLUMN"]], errors="coerce")
         return df
     except FileNotFoundError:
-        logger.error(
-            "错误：找不到 Excel 文件 '%s'。\n请确保路径正确。", excel_file_path
-        )
+        logger.error("错误：找不到 Excel 文件 '%s'。\n请确保路径正确。", excel_file_path)
         sys.exit(1)
     except Exception as e:
         logger.error("读取 Excel 文件时发生错误: %s", e)
@@ -72,13 +67,11 @@ def save_dataframe(df, index, excel_file_path):
     try:
         # 保存回 Excel 文件，先将时间列格式化为字符串
         df_to_save = df.copy()
-        df_to_save[config_data["SEND_TIME_COLUMN"]] = df_to_save[
-            config_data["SEND_TIME_COLUMN"]
-        ].dt.strftime("%Y-%m-%d %H:%M:%S")
-        df_to_save.to_excel(excel_file_path, index=False, engine="openpyxl")
-        logger.info(
-            "成功更新第 %s 行的状态、发送时间和响应内容，并已保存到文件。", index + 1
+        df_to_save[config_data["SEND_TIME_COLUMN"]] = df_to_save[config_data["SEND_TIME_COLUMN"]].dt.strftime(
+            "%Y-%m-%d %H:%M:%S"
         )
+        df_to_save.to_excel(excel_file_path, index=False, engine="openpyxl")
+        logger.info("成功更新第 %s 行的状态、发送时间和响应内容，并已保存到文件。", index + 1)
     except Exception as e:
         logger.error("错误：更新 Excel 文件失败: %s", e)
         logger.error("请检查文件是否被其他程序占用。")
@@ -134,11 +127,7 @@ def process_row_logic(df, index, row, last_send_time):
     # 构建请求体并发送请求
     payload = config_data["request_payload_template"]
 
-    if (
-        "linkData" in payload
-        and isinstance(payload["linkData"], list)
-        and payload["linkData"]
-    ):
+    if "linkData" in payload and isinstance(payload["linkData"], list) and payload["linkData"]:
         num_iid = ""
         try:
             if "id=" in url:
@@ -147,9 +136,7 @@ def process_row_logic(df, index, row, last_send_time):
             logger.warning("无法从URL '%s' 中提取商品ID。", url)
 
         # Deep copy the payload to avoid modifying the template directly
-        current_payload = json.loads(
-            json.dumps(payload)
-        )  # Simple deep copy for dict/list structure
+        current_payload = json.loads(json.dumps(payload))  # Simple deep copy for dict/list structure
 
         # Replace placeholder in URL
         if current_payload["linkData"][0]["url"] == "{url}":
@@ -159,23 +146,17 @@ def process_row_logic(df, index, row, last_send_time):
             num_iid if num_iid else current_payload["linkData"][0].get("num_iid", "")
         )
     else:
-        current_payload = (
-            payload  # Use payload directly if no linkData manipulation needed
-        )
+        current_payload = payload  # Use payload directly if no linkData manipulation needed
 
     # 发送请求并记录当前时间
     current_time = datetime.now()
     success, response_text = send_request(config_data["TARGET_URL"], current_payload)
 
     # 更新 DataFrame
-    df.loc[index, config_data["SEND_TIME_COLUMN"]] = current_time.strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    df.loc[index, config_data["SEND_TIME_COLUMN"]] = current_time.strftime("%Y-%m-%d %H:%M:%S")
     df.loc[index, config_data["RESPONSE_COLUMN"]] = response_text
     if success:
-        df.loc[index, config_data["STATUS_COLUMN"]] = config_data[
-            "STATUS_SUCCESS_VALUE"
-        ]
+        df.loc[index, config_data["STATUS_COLUMN"]] = config_data["STATUS_SUCCESS_VALUE"]
 
     return current_time, True
 
@@ -201,9 +182,7 @@ def process_excel_main(excel_file_path):
 
     # 遍历 DataFrame 的每一行
     for index, row in df.iterrows():
-        new_last_send_time, processed = process_row_logic(
-            df, index, row, last_send_time
-        )
+        new_last_send_time, processed = process_row_logic(df, index, row, last_send_time)
         if processed:
             last_send_time = new_last_send_time
             save_dataframe(df, index, excel_file_path)  # 每次处理完一行就保存

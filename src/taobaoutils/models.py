@@ -1,15 +1,17 @@
 import json
 import secrets
 from datetime import datetime, timedelta
-from werkzeug.security import generate_password_hash, check_password_hash
+
 from flask_praetorian import SQLAlchemyUserMixin
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from taobaoutils.app import db
 
 
 class User(db.Model, SQLAlchemyUserMixin):
     """用户模型，兼容 Flask-Praetorian"""
-    __tablename__ = 'users'
+
+    __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
@@ -32,9 +34,21 @@ class User(db.Model, SQLAlchemyUserMixin):
     roles = db.Column(db.Text, nullable=True)  # 可以存储JSON格式的角色列表
 
     # Relationship to ProductListing
-    product_listings = db.relationship('ProductListing', backref='user', lazy=True)
+    product_listings = db.relationship("ProductListing", backref="user", lazy=True)
 
-    def __init__(self, username, email, password=None, sub_user=None, userids=None, filter_copied=True, copy_type=1, param_id=None, is_search="0", **kwargs):
+    def __init__(
+        self,
+        username,
+        email,
+        password=None,
+        sub_user=None,
+        userids=None,
+        filter_copied=True,
+        copy_type=1,
+        param_id=None,
+        is_search="0",
+        **kwargs,
+    ):
         self.username = username
         self.email = email
         if password:
@@ -72,7 +86,7 @@ class User(db.Model, SQLAlchemyUserMixin):
                 return json.loads(self.roles)
             except Exception:
                 return []
-        return ['user']  # 默认角色
+        return ["user"]  # 默认角色
 
     @property
     def identity(self):
@@ -80,7 +94,7 @@ class User(db.Model, SQLAlchemyUserMixin):
         return self.id
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f"<User {self.username}>"
 
     def to_dict(self):
         """转换为字典格式"""
@@ -91,28 +105,29 @@ class User(db.Model, SQLAlchemyUserMixin):
             except Exception:
                 pass
         return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'is_active': self.is_active,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'taobao_token': bool(self.taobao_token), # Indicate presence of token, not the token itself
-            'sub_user': self.sub_user,
-            'userids': userids_list,
-            'filter_copied': self.filter_copied,
-            'copy_type': self.copy_type,
-            'param_id': self.param_id,
-            'is_search': self.is_search
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "taobao_token": bool(self.taobao_token),  # Indicate presence of token, not the token itself
+            "sub_user": self.sub_user,
+            "userids": userids_list,
+            "filter_copied": self.filter_copied,
+            "copy_type": self.copy_type,
+            "param_id": self.param_id,
+            "is_search": self.is_search,
         }
 
 
 class ProductListing(db.Model):
     """产品列表模型"""
-    __tablename__ = 'product_listings' # Renamed table
+
+    __tablename__ = "product_listings"  # Renamed table
 
     id = db.Column(db.Integer, primary_key=True)
-    status = db.Column(db.String(50), nullable=False, default='requested') # 修改默认值为'requested'
+    status = db.Column(db.String(50), nullable=False, default="requested")  # 修改默认值为'requested'
     send_time = db.Column(db.DateTime, default=datetime.utcnow)
     response_content = db.Column(db.Text, nullable=True)  # 存储API响应内容
     response_code = db.Column(db.Integer, nullable=True)  # 存储API响应状态码
@@ -125,14 +140,14 @@ class ProductListing(db.Model):
     seller_code = db.Column(db.String(255), nullable=True)  # 商家编码
 
     # Foreign key to User model
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     # Foreign key to RequestConfig model
-    request_config_id = db.Column(db.Integer, db.ForeignKey('request_configs.id'), nullable=True)
-    request_config = db.relationship('RequestConfig', backref='product_listings', lazy=True)
-    
+    request_config_id = db.Column(db.Integer, db.ForeignKey("request_configs.id"), nullable=True)
+    request_config = db.relationship("RequestConfig", backref="product_listings", lazy=True)
+
     def __repr__(self):
-        return f"<ProductListing {self.id} - {self.product_id or self.product_link}>" # Updated to use product_link
+        return f"<ProductListing {self.id} - {self.product_id or self.product_link}>"  # Updated to use product_link
 
     def to_dict(self):
         return {
@@ -152,16 +167,16 @@ class ProductListing(db.Model):
 
 
 class RequestConfig(db.Model):
-    __tablename__ = 'request_configs'
+    __tablename__ = "request_configs"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     taobao_token = db.Column(db.Text, nullable=True)
-    payload = db.Column(db.Text, nullable=True) # Stored as JSON string
-    header = db.Column(db.Text, nullable=True) # Stored as JSON string for HTTP headers
+    payload = db.Column(db.Text, nullable=True)  # Stored as JSON string
+    header = db.Column(db.Text, nullable=True)  # Stored as JSON string for HTTP headers
 
-    user = db.relationship('User', backref='request_configs', lazy=True)
+    user = db.relationship("User", backref="request_configs", lazy=True)
 
     def __init__(self, user_id, name, taobao_token=None, payload=None, header=None):
         self.user_id = user_id
@@ -172,11 +187,11 @@ class RequestConfig(db.Model):
 
     def __repr__(self):
         return f"<RequestConfig {self.id} - {self.name}>"
-    
+
     def set_cookie(self, cookie_data):
         """
         将cookie数据存入header字段中
-        
+
         Args:
             cookie_data: 字典格式的cookie数据
         """
@@ -187,23 +202,23 @@ class RequestConfig(db.Model):
                 headers = json.loads(self.header)
             except json.JSONDecodeError:
                 pass
-        
+
         # 处理cookie数据并添加到header中
         if cookie_data:
             # 检查cookie_data是字典还是字符串
             if isinstance(cookie_data, dict):
                 # 如果是字典，将其格式化为字符串
-                cookie_str = '; '.join([f'{key}={value}' for key, value in cookie_data.items()])
+                cookie_str = "; ".join([f"{key}={value}" for key, value in cookie_data.items()])
             else:
                 # 如果已经是字符串，直接使用
                 cookie_str = str(cookie_data)
-            
+
             # 将cookie添加到header中
-            headers['Cookie'] = cookie_str
-            
+            headers["Cookie"] = cookie_str
+
             # 保存更新后的header
             self.header = json.dumps(headers)
-    
+
     def to_dict(self):
         payload_obj = None
         if self.payload:
@@ -211,7 +226,7 @@ class RequestConfig(db.Model):
                 payload_obj = json.loads(self.payload)
             except json.JSONDecodeError:
                 pass
-        
+
         header_obj = None
         if self.header:
             try:
@@ -231,12 +246,13 @@ class RequestConfig(db.Model):
 
 class APIToken(db.Model):
     """API Token模型，用于外部服务访问"""
-    __tablename__ = 'api_tokens'
+
+    __tablename__ = "api_tokens"
 
     id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(255), nullable=False, unique=True, index=True)
     name = db.Column(db.String(100), nullable=False)  # Token名称，方便用户识别
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     scopes = db.Column(db.Text, nullable=True)  # JSON格式存储权限范围
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=True)  # 可选的过期时间
@@ -246,37 +262,37 @@ class APIToken(db.Model):
     suffix = db.Column(db.String(6), nullable=False)  # Token后缀，用于用户识别
 
     # 关联到用户
-    user = db.relationship('User', backref=db.backref('api_tokens', lazy=True))
+    user = db.relationship("User", backref=db.backref("api_tokens", lazy=True))
 
     @staticmethod
     def generate_token(user_id, name, scopes=None, expires_days=None):
         """
         生成新的API Token
-        
+
         Args:
             user_id: 用户ID
             name: Token名称
             scopes: 权限范围列表
             expires_days: 过期天数，None表示永不过期
-            
+
         Returns:
             tuple: (原始token字符串, APIToken对象)
         """
         # 生成安全的随机token
         token_bytes = secrets.token_urlsafe(32)  # 生成安全的随机字符串
-        
+
         # 创建前缀和后缀用于显示（不用于验证）
         prefix = token_bytes[:10]
         suffix = token_bytes[-6:]
-        
+
         # 计算过期时间
         expires_at = None
         if expires_days:
             expires_at = datetime.utcnow() + timedelta(days=expires_days)
-        
+
         # 生成哈希值用于存储
         token_hash = generate_password_hash(token_bytes)
-        
+
         # 创建token记录
         token = APIToken(
             token_hash=token_hash,
@@ -285,29 +301,29 @@ class APIToken(db.Model):
             scopes=json.dumps(scopes) if scopes else None,
             expires_at=expires_at,
             prefix=prefix,
-            suffix=suffix
+            suffix=suffix,
         )
-        
+
         return token_bytes, token
 
     def verify_token(self, token):
         """
         验证token是否有效
-        
+
         Args:
             token: 待验证的token字符串
-            
+
         Returns:
             bool: token是否有效
         """
         # 检查token是否激活
         if not self.is_active:
             return False
-        
+
         # 检查token是否过期
         if self.expires_at and datetime.utcnow() > self.expires_at:
             return False
-        
+
         # 验证token哈希
         return check_password_hash(self.token_hash, token)
 
@@ -328,13 +344,13 @@ class APIToken(db.Model):
     def to_dict(self):
         """转换为字典格式，不包含完整token"""
         return {
-            'id': self.id,
-            'name': self.name,
-            'display_token': f"{self.prefix}...{self.suffix}",
-            'user_id': self.user_id,
-            'scopes': self.get_scopes(),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
-            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
-            'is_active': self.is_active
+            "id": self.id,
+            "name": self.name,
+            "display_token": f"{self.prefix}...{self.suffix}",
+            "user_id": self.user_id,
+            "scopes": self.get_scopes(),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
+            "is_active": self.is_active,
         }
