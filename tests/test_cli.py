@@ -14,14 +14,14 @@ def test_serve_command_help():
     runner = CliRunner()
     result = runner.invoke(main, ["serve", "--help"])
     assert result.exit_code == 0
-    assert "Run the Flask API server." in result.output
+    assert "Run the Flask API development server for testing." in result.output
 
 
 def test_process_excel_command_help():
     runner = CliRunner()
-    result = runner.invoke(main, ["process-excel", "--help"])
+    result = runner.invoke(main, ["process", "--help"])
     assert result.exit_code == 0
-    assert "Process the Excel file in the current directory." in result.output
+    assert "Process the Excel file specified by path." in result.output
 
 
 # Note: Actual testing of 'serve' and 'process-excel' commands would require

@@ -18,27 +18,44 @@ def main():
 
 
 @main.command()
-@click.option('--host', default='127.0.0.1', help='Host address for the Flask server.')
-@click.option('--port', default=5000, type=int, help='Port for the Flask server.')
+@click.option("--host", default="127.0.0.1", help="Host address for the Flask server.")
+@click.option("--port", default=5000, type=int, help="Port for the Flask server.")
 def serve(host, port):
     """Run the Flask API development server for testing."""
     logger.info("Starting Flask API development server on %s:%s...", host, port)
     try:
         from taobaoutils.app import create_app
+
         app = create_app()
         app.run(host=host, port=port, debug=True)
     except Exception as e:
         logger.error("Failed to start Flask API development server: %s", e)
         sys.exit(1)
 
+
 @main.command(name="process")
-@click.argument('excel_path', type=click.Path(exists=True, dir_okay=False, readable=True))
+@click.argument("excel_path", type=click.Path(exists=True, dir_okay=False, readable=True))
 def process_excel_command(excel_path):
     """Process the Excel file specified by path."""
     logger.info("Processing Excel file: %s...", excel_path)
     from taobaoutils.excel_processor import process_excel_main
+
     process_excel_main(excel_path)
 
 
-if __name__ == '__main__':
+@main.command()
+@click.option("--coverage", is_flag=True, default=False, help="Run tests with coverage report.")
+def test(coverage):
+    """Run tests using pytest."""
+    import pytest
+
+    args = []
+    if coverage:
+        args.extend(["--cov=src/taobaoutils", "--cov-report=term-missing"])
+
+    # Run pytest and exit with its return code
+    sys.exit(pytest.main(args))
+
+
+if __name__ == "__main__":
     main()

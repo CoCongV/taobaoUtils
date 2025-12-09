@@ -40,3 +40,9 @@ line-length = 120
 # B: flake8-bugbear (潜在Bug)
 # UP: pyupgrade (自动升级旧语法，比如把 List[str] 变成 list[str])
 select = ["E", "F", "I", "B", "UP"]
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.2,<10.0.0)",
+    "pytest-cov (>=7.0.0,<8.0.0)"
+]
