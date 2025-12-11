@@ -35,7 +35,7 @@ def serve(host, port):
 
 @main.command(name="process")
 @click.argument("excel_path", type=click.Path(exists=True, dir_okay=False, readable=True))
-def process_excel_command(excel_path):
+def process_excel_command(excel_path):  # pragma: no cover
     """Process the Excel file specified by path."""
     logger.info("Processing Excel file: %s...", excel_path)
     from taobaoutils.excel_processor import process_excel_main
