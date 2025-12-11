@@ -51,7 +51,7 @@ def test(coverage):
 
     args = []
     if coverage:
-        args.extend(["--cov=src/taobaoutils", "--cov-report=term-missing"])
+        args.extend(["--cov=src/taobaoutils", "--cov-report=term-missing", "--cov-report=html"])
 
     # Run pytest and exit with its return code
     sys.exit(pytest.main(args))
