@@ -154,8 +154,34 @@ class ProductListing(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     # Foreign key to RequestConfig model
-    request_config_id = db.Column(db.Integer, db.ForeignKey("request_configs.id"), nullable=True)
+    request_config_id = db.Column(db.Integer, db.ForeignKey("request_configs.id"), nullable=False)
     request_config = db.relationship("RequestConfig", backref="product_listings", lazy=True)
+
+    def __init__(
+        self,
+        user_id,
+        request_config_id,
+        status="requested",
+        send_time=None,
+        response_content=None,
+        response_code=None,
+        product_id=None,
+        product_link=None,
+        title=None,
+        stock=None,
+        listing_code=None,
+    ):
+        self.user_id = user_id
+        self.request_config_id = request_config_id
+        self.status = status
+        self.send_time = send_time or datetime.now(UTC)
+        self.response_content = response_content
+        self.response_code = response_code
+        self.product_id = product_id
+        self.product_link = product_link
+        self.title = title
+        self.stock = stock
+        self.listing_code = listing_code
 
     def __repr__(self):
         return f"<ProductListing {self.id} - {self.product_id or self.product_link}>"  # Updated to use product_link

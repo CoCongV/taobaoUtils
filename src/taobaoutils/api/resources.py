@@ -11,7 +11,7 @@ from werkzeug.datastructures import FileStorage
 from taobaoutils import config_data, logger
 from taobaoutils.api.auth import api_token_required
 from taobaoutils.app import db
-from taobaoutils.models import ProductListing
+from taobaoutils.models import ProductListing, RequestConfig
 
 
 def _get_payload_from_listing(product_listing):
@@ -147,6 +147,7 @@ class ProductListingResource(Resource):  # Renamed class
     @auth_required
     def post(self):
         parser = reqparse.RequestParser()
+        parser.add_argument("request_config_id", type=int, required=True, help="RequestConfig ID is required")
         parser.add_argument("status", type=str, required=False, help="Status")  # Made optional
         parser.add_argument("response_content", type=str, required=False)
         parser.add_argument("response_code", type=int, required=False)
@@ -158,8 +159,15 @@ class ProductListingResource(Resource):  # Renamed class
 
         args = parser.parse_args()
 
+        # Check if request_config exists
+        req_config = RequestConfig.query.filter_by(id=args["request_config_id"], user_id=current_user().id).first()
+        if not req_config:
+            return {"message": "Invalid request_config_id"}, 400
+
         # Changed RequestLog to ProductListing
         new_listing = ProductListing(
+            user_id=current_user().id,
+            request_config_id=args["request_config_id"],
             status=args["status"],
             send_time=datetime.utcnow(),
             response_content=args["response_content"],
@@ -169,7 +177,6 @@ class ProductListingResource(Resource):  # Renamed class
             title=args["title"],
             stock=args["stock"],
             listing_code=args["listing_code"],
-            user_id=current_user().id,  # Assign current user's ID
         )
         db.session.add(new_listing)
         db.session.commit()
@@ -197,9 +204,18 @@ class ExcelUploadResource(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("file", type=FileStorage, location="files", required=True, help="Excel file is required")
+        parser.add_argument(
+            "request_config_id", type=int, location="form", required=True, help="RequestConfig ID is required"
+        )  # Add request_config_id
         args = parser.parse_args()
 
         excel_file = args["file"]
+        request_config_id = args["request_config_id"]
+
+        # Validate request_config_id
+        req_config = RequestConfig.query.filter_by(id=request_config_id, user_id=current_user().id).first()
+        if not req_config:
+            return {"message": "Invalid request_config_id"}, 400
 
         if not excel_file.filename.endswith((".xlsx", ".xls")):
             return {"message": "Invalid file type. Only .xlsx and .xls are allowed."}, 400
@@ -223,6 +239,8 @@ class ExcelUploadResource(Resource):
             new_listings = []
             for _, row in df.iterrows():
                 new_listing = ProductListing(
+                    user_id=current_user().id,
+                    request_config_id=request_config_id,
                     product_id=str(row["商品ID"]) if pd.notna(row["商品ID"]) else None,
                     product_link=str(row["商品链接"]) if pd.notna(row["商品链接"]) else None,
                     title=str(row["标题"]) if pd.notna(row["标题"]) else None,
@@ -230,7 +248,6 @@ class ExcelUploadResource(Resource):
                     listing_code=str(row["上架编码"]) if pd.notna(row["上架编码"]) else None,
                     send_time=datetime.utcnow(),  # Default send_time
                     status="Uploaded",  # Default status for uploaded items
-                    user_id=current_user().id,  # Assign current user's ID
                 )
                 db.session.add(new_listing)
                 new_listings.append(new_listing)

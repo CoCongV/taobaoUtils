@@ -1,7 +1,7 @@
 import pytest
 
 from taobaoutils.app import db
-from taobaoutils.models import APIToken, ProductListing, User
+from taobaoutils.models import APIToken, ProductListing, RequestConfig, User
 
 
 @pytest.fixture
@@ -21,12 +21,12 @@ def api_auth_headers(app):
 
 def test_callback_success(client, api_auth_headers, app):
     with app.app_context():
-        # Ensure user exists for listing (could use same user as token or different)
-        # Assuming user from fixture exists (user_id will be 1 or whatever)
-        # But we need valid user_id for ProductListing.
-        # The user created in api_auth_headers exists.
         user = User.query.filter_by(username="cb_user").first()
-        pl = ProductListing(user_id=user.id, status="pending", product_id="123")
+        rc = RequestConfig(user_id=user.id, name="Callback Config")
+        db.session.add(rc)
+        db.session.commit()
+
+        pl = ProductListing(user_id=user.id, request_config_id=rc.id, status="pending", product_id="123")
         db.session.add(pl)
         db.session.commit()
         pl_id = pl.id
@@ -60,7 +60,11 @@ def test_callback_missing_args(client, api_auth_headers):
 def test_callback_partial_update(client, api_auth_headers, app):
     with app.app_context():
         user = User.query.filter_by(username="cb_user").first()
-        pl = ProductListing(user_id=user.id, status="pending", product_id="456")
+        rc = RequestConfig(user_id=user.id, name="Callback Config 2")
+        db.session.add(rc)
+        db.session.commit()
+
+        pl = ProductListing(user_id=user.id, request_config_id=rc.id, status="pending", product_id="456")
         db.session.add(pl)
         db.session.commit()
         pl_id = pl.id

@@ -28,17 +28,23 @@ def test_product_listing_model(session):
     session.add(u)
     session.commit()
 
-    pl = ProductListing(user_id=u.id, product_link="http://test.com", product_id="123")
+    rc = RequestConfig(user_id=u.id, name="Config 1")
+    session.add(rc)
+    session.commit()
+
+    pl = ProductListing(user_id=u.id, request_config_id=rc.id, product_link="http://test.com", product_id="123")
     session.add(pl)
     session.commit()
 
     assert pl.id is not None
     assert pl.status == "requested"
+    assert pl.request_config_id == rc.id
     assert str(pl) == "<ProductListing 1 - 123>"
 
     d = pl.to_dict()
     assert d["product_link"] == "http://test.com"
     assert d["status"] == "requested"
+    assert d["request_config_id"] == rc.id
 
 
 def test_request_config_model(session):
