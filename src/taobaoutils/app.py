@@ -22,6 +22,12 @@ def create_app():
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+    # Validate essential configuration
+    if not config_data.get("scheduler", {}).get("SCHEDULER_SERVICE_URL"):
+        logger.warning("SCHEDULER_SERVICE_URL is not configured in config.toml")
+        # You might want to raise an error here if it's critical:
+        # raise ValueError("SCHEDULER_SERVICE_URL is required")
+
     # Praetorian 配置
     app.config["JWT_ACCESS_LIFESPAN"] = {"hours": 24}
     app.config["JWT_REFRESH_LIFESPAN"] = {"days": 30}

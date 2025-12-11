@@ -47,9 +47,6 @@ def _send_single_task_to_scheduler(product_listing):
     Sends a single product listing task to the scheduler service.
     """
     scheduler_url = config_data["scheduler"]["SCHEDULER_SERVICE_URL"]
-    if not scheduler_url:
-        logger.error("SCHEDULER_SERVICE_URL not configured.")
-        return False
 
     task_url = scheduler_url.rstrip("/") + "/add_req_task"
 
@@ -79,9 +76,7 @@ def _send_batch_tasks_to_scheduler(product_listings):
     Sends a batch of product listing tasks to the scheduler service.
     """
     scheduler_url = config_data["scheduler"]["SCHEDULER_SERVICE_URL"]
-    if not scheduler_url:
-        logger.error("SCHEDULER_SERVICE_URL not configured.")
-        return False
+    # Validation moved to app startup
 
     task_url = scheduler_url.rstrip("/") + "/add_req_tasks"
 

@@ -76,12 +76,6 @@ def test_send_single_task_success(mock_post, mock_listing, mock_config):
         assert kwargs["json"]["target_url"] == "http://target"
 
 
-def test_send_single_task_no_url(mock_listing, mock_config):
-    mock_config["scheduler"]["SCHEDULER_SERVICE_URL"] = ""
-    with patch("taobaoutils.api.resources.config_data", mock_config):
-        assert _send_single_task_to_scheduler(mock_listing) is False
-
-
 @patch("taobaoutils.api.resources.requests.post")
 def test_send_single_task_failure(mock_post, mock_listing, mock_config):
     mock_post.side_effect = RequestException("Error")
@@ -105,12 +99,6 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
         assert len(kwargs["json"]["payloads"]) == 2
-
-
-def test_send_batch_tasks_no_url(mock_listing, mock_config):
-    mock_config["scheduler"]["SCHEDULER_SERVICE_URL"] = ""
-    with patch("taobaoutils.api.resources.config_data", mock_config):
-        assert _send_batch_tasks_to_scheduler([mock_listing]) is False
 
 
 @patch("taobaoutils.api.resources.requests.post")
