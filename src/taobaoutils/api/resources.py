@@ -1,5 +1,4 @@
 import json
-import random
 from datetime import datetime
 
 import pandas as pd
@@ -94,43 +93,59 @@ def _send_batch_tasks_to_scheduler(product_listings):
     Sends a batch of product listing tasks to the scheduler service.
     """
     scheduler_url = config_data["scheduler"]["SCHEDULER_SERVICE_URL"]
-    # Validation moved to app startup
+    callback_url = config_data.get("scheduler", {}).get("CALLBACK_URL")
 
     task_url = scheduler_url.rstrip("/") + "/add_req_tasks"
 
-    payloads = [_get_payload_from_listing(listing) for listing in product_listings]
-    cookie = config_data.get("custom_headers", {})
+    tasks_data = []
 
-    # Use config from the first listing for batch parameters
-    if not product_listings:
-        logger.warning("No product listings provided for batch task.")
+    for listing in product_listings:
+        if not listing.request_config:
+            logger.warning("ProductListing %s missing request_config, skipping.", listing.id)
+            continue
+
+        req_config = listing.request_config
+
+        # Parse header
+        header = None
+        if req_config.header:
+            try:
+                header = json.loads(req_config.header)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse header for RequestConfig %s", req_config.id)
+
+        # Parse payload as body
+        body = None
+        if req_config.payload:
+            try:
+                body = json.loads(req_config.payload)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse payload for RequestConfig %s", req_config.id)
+
+        task_item = {
+            "name": listing.title or f"Product {listing.id}",
+            "start_time": datetime.utcnow().timestamp(),
+            "header": header,
+            "method": "GET",
+            "request_url": scheduler_url,  # Per user instruction
+            "callback_url": callback_url,
+            "callback_id": str(listing.id),
+            "callback_token": "",
+            "body": body,
+            "cron": None,
+        }
+        tasks_data.append(task_item)
+
+    if not tasks_data:
+        logger.warning("No valid tasks to send to scheduler.")
         return False
 
-    req_config = product_listings[0].request_config
-    if not req_config:
-        logger.error("ProductListing %s missing request_config, cannot send batch task.", product_listings[0].id)
-        return False
-
-    target_url = req_config.request_url
-    request_interval_minutes = req_config.request_interval_minutes
-    random_min = req_config.random_min
-    random_max = req_config.random_max
-
-    interval_seconds = (request_interval_minutes * 60) + random.uniform(random_min, random_max)
-
-    task_data = {
-        "cookie": cookie,
-        "payloads": payloads,
-        "target_url": target_url,
-        "interval": interval_seconds,
-        "random_interval_seconds_min": random_min,
-        "random_interval_seconds_max": random_max,
-    }
+    payload = {"tasks_data": tasks_data}
 
     try:
-        response = requests.post(task_url, json=task_data, timeout=30)
+        response = requests.post(task_url, json=payload, timeout=30)
         response.raise_for_status()
-        logger.info("Successfully sent batch of %d tasks to scheduler.", len(product_listings))
+        logger.info("Successfully sent batch of %d tasks to scheduler.", len(tasks_data))
         return True
     except requests.exceptions.RequestException as e:
         logger.error("Failed to send batch tasks to scheduler: %s", e)

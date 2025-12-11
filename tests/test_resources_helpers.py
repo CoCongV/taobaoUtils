@@ -129,7 +129,13 @@ def test_send_single_task_failure(mock_post, mock_listing, mock_config):
 @patch("taobaoutils.api.resources.requests.post")
 def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
     mock_post.return_value.raise_for_status = MagicMock()
+    mock_listing.request_config.header = '{"Cookie": "abc"}'
+    mock_listing.request_config.payload = '{"key": "val"}'
+    mock_listing.title = "Test Product"
     listings = [mock_listing, mock_listing]
+
+    # Add CALLBACK_URL to config
+    mock_config["scheduler"]["CALLBACK_URL"] = "http://callback"
 
     with patch("taobaoutils.api.resources.config_data", mock_config):
         result = _send_batch_tasks_to_scheduler(listings)
@@ -137,12 +143,22 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
         assert result is True
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
-        assert len(kwargs["json"]["payloads"]) == 2
+        json_data = kwargs["json"]
+        assert "tasks_data" in json_data
+        assert len(json_data["tasks_data"]) == 2
+        item = json_data["tasks_data"][0]
+        assert item["name"] == "Test Product"
+        assert item["header"] == {"Cookie": "abc"}
+        assert item["body"] == {"key": "val"}
+        assert item["callback_url"] == "http://callback"
+        assert item["callback_id"] == "1"
 
 
 @patch("taobaoutils.api.resources.requests.post")
 def test_send_batch_tasks_failure(mock_post, mock_listing, mock_config):
     mock_post.side_effect = RequestException("Error")
+    mock_listing.request_config.header = "{}"  # valid json
+    mock_listing.request_config.payload = "{}"
 
     with patch("taobaoutils.api.resources.config_data", mock_config):
         assert _send_batch_tasks_to_scheduler([mock_listing]) is False
