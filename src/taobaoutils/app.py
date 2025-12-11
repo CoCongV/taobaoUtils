@@ -37,7 +37,9 @@ def create_app():
     # Import and register blueprints/resources
     from taobaoutils.api.routes import initialize_routes
 
-    initialize_routes(api)
+    # Check if routes are already registered to avoid re-registration in tests
+    if not api.resources:
+        initialize_routes(api)
 
     with app.app_context():
         db.create_all()  # Create database tables for our models

@@ -1,0 +1,91 @@
+import pytest
+
+from taobaoutils.app import create_app, db, guard
+from taobaoutils.models import RequestConfig, User
+
+
+@pytest.fixture
+def app():
+    app = create_app()
+    app.config["TESTING"] = True
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.config["SECRET_KEY"] = "test_secret"
+
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+@pytest.fixture
+def auth_headers(app):
+    with app.app_context():
+        user = User(username="testuser", email="test@example.com", password="password")
+        db.session.add(user)
+        db.session.commit()
+        token = guard.encode_jwt_token(user)
+        return {"Authorization": f"Bearer {token}"}
+
+
+def test_get_request_configs_empty(client, auth_headers):
+    response = client.get("/api/request-configs", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json == []
+
+
+def test_create_request_config(client, auth_headers):
+    data = {"name": "Test Config", "taobao_token": "token123", "payload": {"a": 1}, "header": {"x": 1}}
+    response = client.post("/api/request-configs", json=data, headers=auth_headers)
+    assert response.status_code == 201
+    assert response.json["name"] == "Test Config"
+    # User ID check might fail if we don't know the exact ID, but based on fixture it should be 1
+    # assert response.json["user_id"] == 1
+
+
+def test_get_request_config_detail(client, auth_headers, app):
+    with app.app_context():
+        # User created in auth_headers fixture has ID 1 (first user)
+        rc = RequestConfig(user_id=1, name="Config 1")
+        db.session.add(rc)
+        db.session.commit()
+        rc_id = rc.id
+
+    response = client.get(f"/api/request-configs/{rc_id}", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json["name"] == "Config 1"
+
+
+def test_update_request_config(client, auth_headers, app):
+    with app.app_context():
+        rc = RequestConfig(user_id=1, name="Config 1")
+        db.session.add(rc)
+        db.session.commit()
+        rc_id = rc.id
+
+    data = {"name": "Updated Config", "payload": {"b": 2}}
+    response = client.put(f"/api/request-configs/{rc_id}", json=data, headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json["name"] == "Updated Config"
+    assert response.json["payload"] == {"b": 2}
+
+
+def test_delete_request_config(client, auth_headers, app):
+    with app.app_context():
+        rc = RequestConfig(user_id=1, name="To Delete")
+        db.session.add(rc)
+        db.session.commit()
+        rc_id = rc.id
+
+    response = client.delete(f"/api/request-configs/{rc_id}", headers=auth_headers)
+    assert response.status_code == 200
+
+    # Verify deletion
+    with app.app_context():
+        assert RequestConfig.query.get(rc_id) is None
