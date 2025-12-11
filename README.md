@@ -13,7 +13,57 @@ poetry install
 
 ## 配置
 
-项目通常需要在当前工作目录下包含 `config.toml` 文件以进行配置（如 Excel 列名映射、数据库路径等）。
+项目通常需要在当前工作目录下包含 `config.toml` 文件以进行配置。以下是一个配置样例：
+
+```toml
+# 目标 API URL
+TARGET_URL = "https://example.com/api/endpoint"
+
+# Excel 列名映射
+URL_COLUMN = "商品链接"
+STATUS_COLUMN = "状态"
+SEND_TIME_COLUMN = "发送时间"
+RESPONSE_COLUMN = "响应内容"
+
+# 成功状态值（当状态为此列值时跳过处理）
+STATUS_SUCCESS_VALUE = "是"
+
+# 请求间隔配置
+REQUEST_INTERVAL_MINUTES = 8       # 基础间隔（分钟）
+RANDOM_INTERVAL_SECONDS_MIN = 2    # 额外随机延迟最小值（秒）
+RANDOM_INTERVAL_SECONDS_MAX = 15   # 额外随机延迟最大值（秒）
+
+# Cookie 配置 (可选)
+Appname = "your_appname"
+Token = "your_token"
+
+# Web 应用配置
+[app]
+SECRET_KEY = "your-secret-key-here"
+# DATABASE_URI = "sqlite:///taobaoutils.db" # 可选，默认使用 sqlite
+
+# 日志配置
+[logging]
+LOG_LEVEL = "INFO"
+LOG_TO_FILE = false
+LOG_FILE_PATH = "app.log"
+
+# 调度器服务配置
+[scheduler]
+SCHEDULER_SERVICE_URL = "http://localhost:8000"
+
+# 请求体模板
+[request_payload_template]
+some_field = "value"
+# linkData 字段用于动态替换 URL 和 ID
+linkData = [
+    { url = "{url}", num_iid = "" }
+]
+
+# 自定义请求头 (可选)
+[custom_headers]
+User-Agent = "Mozilla/5.0 ..."
+```
 
 ## 使用方法
 
