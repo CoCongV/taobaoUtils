@@ -11,7 +11,7 @@ class RequestConfigListResource(Resource):
     def __init__(self):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument("name", type=str, required=True, help="Name is required")
-        self.parser.add_argument("url", type=str, required=False)
+        self.parser.add_argument("request_url", type=str, required=False)
         self.parser.add_argument("taobao_token", type=str, required=False)
         self.parser.add_argument("payload", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
@@ -30,7 +30,7 @@ class RequestConfigListResource(Resource):
         new_config = RequestConfig(
             user_id=user_id,
             name=args["name"],
-            url=args.get("url"),
+            request_url=args.get("request_url"),
             taobao_token=args["taobao_token"],
             payload=args["payload"],
             header=args["header"],
@@ -46,7 +46,7 @@ class RequestConfigResource(Resource):
     def __init__(self):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument("name", type=str, required=False)
-        self.parser.add_argument("url", type=str, required=False)
+        self.parser.add_argument("request_url", type=str, required=False)
         self.parser.add_argument("taobao_token", type=str, required=False)
         self.parser.add_argument("payload", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
@@ -65,8 +65,8 @@ class RequestConfigResource(Resource):
 
         if args["name"]:
             config.name = args["name"]
-        if args["url"]:
-            config.url = args["url"]
+        if args["request_url"]:
+            config.request_url = args["request_url"]
         if args["taobao_token"]:
             config.taobao_token = args["taobao_token"]
         if args["payload"]:

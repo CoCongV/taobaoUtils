@@ -185,17 +185,17 @@ class RequestConfig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    url = db.Column(db.String(500), nullable=True)  # 目标URL
+    request_url = db.Column(db.String(500), nullable=True)  # 目标URL
     taobao_token = db.Column(db.Text, nullable=True)
     payload = db.Column(db.Text, nullable=True)  # 存储为JSON字符串
     header = db.Column(db.Text, nullable=True)  # 存储为JSON字符串，用于HTTP头
 
     user = db.relationship("User", backref="request_configs", lazy=True)
 
-    def __init__(self, user_id, name, url=None, taobao_token=None, payload=None, header=None):
+    def __init__(self, user_id, name, request_url=None, taobao_token=None, payload=None, header=None):
         self.user_id = user_id
         self.name = name
-        self.url = url
+        self.request_url = request_url
         self.taobao_token = taobao_token
         self.payload = json.dumps(payload) if payload else None
         self.header = json.dumps(header) if header else None
@@ -253,7 +253,7 @@ class RequestConfig(db.Model):
             "id": self.id,
             "user_id": self.user_id,
             "name": self.name,
-            "url": self.url,
+            "request_url": self.request_url,
             "taobao_token": self.taobao_token,
             "payload": payload_obj,
             "header": header_obj,
