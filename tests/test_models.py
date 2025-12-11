@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -109,5 +109,5 @@ def test_api_token_model(session):
     assert d["display_token"].startswith(token.prefix)
 
     # Test expiration
-    token.expires_at = datetime.utcnow() - timedelta(days=1)
+    token.expires_at = datetime.now(UTC) - timedelta(days=1)
     assert not token.verify_token(token_str)

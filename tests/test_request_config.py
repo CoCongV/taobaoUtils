@@ -88,4 +88,4 @@ def test_delete_request_config(client, auth_headers, app):
 
     # Verify deletion
     with app.app_context():
-        assert RequestConfig.query.get(rc_id) is None
+        assert db.session.get(RequestConfig, rc_id) is None

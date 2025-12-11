@@ -1,6 +1,6 @@
 import json
 import secrets
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from flask_praetorian import SQLAlchemyUserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -18,8 +18,8 @@ class User(db.Model, SQLAlchemyUserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     # 淘宝相关字段
     taobao_token = db.Column(db.Text, nullable=True)
@@ -76,7 +76,7 @@ class User(db.Model, SQLAlchemyUserMixin):
     def set_token(self, token):
         """设置淘宝token"""
         self.taobao_token = token
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     @property
     def rolenames(self):
@@ -128,7 +128,7 @@ class ProductListing(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(50), nullable=False, default="requested")  # 修改默认值为'requested'
-    send_time = db.Column(db.DateTime, default=datetime.utcnow)
+    send_time = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
     response_content = db.Column(db.Text, nullable=True)  # 存储API响应内容
     response_code = db.Column(db.Integer, nullable=True)  # 存储API响应状态码
 
@@ -254,7 +254,7 @@ class APIToken(db.Model):
     name = db.Column(db.String(100), nullable=False)  # Token名称，方便用户识别
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     scopes = db.Column(db.Text, nullable=True)  # JSON格式存储权限范围
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
     expires_at = db.Column(db.DateTime, nullable=True)  # 可选的过期时间
     last_used_at = db.Column(db.DateTime, nullable=True)  # 最后使用时间
     is_active = db.Column(db.Boolean, default=True, nullable=False)
@@ -288,7 +288,7 @@ class APIToken(db.Model):
         # 计算过期时间
         expires_at = None
         if expires_days:
-            expires_at = datetime.utcnow() + timedelta(days=expires_days)
+            expires_at = datetime.now(UTC) + timedelta(days=expires_days)
 
         # 生成哈希值用于存储
         token_hash = generate_password_hash(token_bytes)
@@ -321,7 +321,7 @@ class APIToken(db.Model):
             return False
 
         # 检查token是否过期
-        if self.expires_at and datetime.utcnow() > self.expires_at:
+        if self.expires_at and datetime.now(UTC) > self.expires_at.replace(tzinfo=UTC):
             return False
 
         # 验证token哈希
@@ -329,7 +329,7 @@ class APIToken(db.Model):
 
     def update_last_used(self):
         """更新最后使用时间"""
-        self.last_used_at = datetime.utcnow()
+        self.last_used_at = datetime.now(UTC)
         db.session.commit()
 
     def get_scopes(self):
