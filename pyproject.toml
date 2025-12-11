@@ -50,3 +50,6 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::ResourceWarning",
 ]
+
+[tool.coverage.run]
+omit = ["src/taobaoutils/cli.py"]

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from flask_praetorian import SQLAlchemyUserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from taobaoutils.app import db
+from taobaoutils.app import db, guard
 
 
 class User(db.Model, SQLAlchemyUserMixin):
@@ -67,11 +67,22 @@ class User(db.Model, SQLAlchemyUserMixin):
 
     def set_password(self, password):
         """设置密码哈希"""
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = guard.hash_password(password)
 
     def verify_password(self, password):
         """验证密码"""
-        return check_password_hash(self.password_hash, password)
+        return guard.pwd_ctx.verify(password, self.password_hash)
+
+    # Flask-Praetorian compatibility
+    check_password = verify_password
+
+    @property
+    def password(self):
+        return self.password_hash
+
+    @password.setter
+    def password(self, password):
+        self.set_password(password)
 
     def set_token(self, token):
         """设置淘宝token"""
@@ -137,7 +148,7 @@ class ProductListing(db.Model):
     product_link = db.Column(db.String(500), nullable=True)
     title = db.Column(db.String(500), nullable=True)
     stock = db.Column(db.Integer, nullable=True)
-    seller_code = db.Column(db.String(255), nullable=True)  # 商家编码
+    listing_code = db.Column(db.String(255), nullable=True)  # 上架编码
 
     # Foreign key to User model
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -160,7 +171,7 @@ class ProductListing(db.Model):
             "product_link": self.product_link,
             "title": self.title,
             "stock": self.stock,
-            "seller_code": self.seller_code,  # 商家编码
+            "listing_code": self.listing_code,  # 上架编码
             "user_id": self.user_id,
             "request_config_id": self.request_config_id,
         }

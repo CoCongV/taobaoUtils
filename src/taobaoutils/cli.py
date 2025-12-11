@@ -2,8 +2,10 @@ import sys
 from pathlib import Path
 
 import click
+import pytest
 
 from taobaoutils import logger
+from taobaoutils.app import create_app
 
 # Ensure the project root is in sys.path for module imports
 # Assuming cli.py is in src/taobaoutils/
@@ -24,8 +26,6 @@ def serve(host, port):
     """Run the Flask API development server for testing."""
     logger.info("Starting Flask API development server on %s:%s...", host, port)
     try:
-        from taobaoutils.app import create_app
-
         app = create_app()
         app.run(host=host, port=port, debug=True)
     except Exception as e:
@@ -47,7 +47,6 @@ def process_excel_command(excel_path):  # pragma: no cover
 @click.option("--coverage", is_flag=True, default=False, help="Run tests with coverage report.")
 def test(coverage):
     """Run tests using pytest."""
-    import pytest
 
     args = []
     if coverage:

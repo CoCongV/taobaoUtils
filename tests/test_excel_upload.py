@@ -1,0 +1,98 @@
+from io import BytesIO
+from unittest.mock import patch
+
+import pandas as pd
+import pytest
+
+from taobaoutils.app import db, guard
+from taobaoutils.models import ProductListing, User
+
+
+@pytest.fixture
+def auth_headers(app):
+    with app.app_context():
+        # Ensure user exists
+        user = User(username="excel_user", email="excel@example.com", password="password")
+        db.session.add(user)
+        db.session.commit()
+        token = guard.encode_jwt_token(user)
+        return {"Authorization": f"Bearer {token}"}
+
+
+@patch("taobaoutils.api.resources._send_batch_tasks_to_scheduler")
+def test_upload_excel_success(mock_send_batch, client, auth_headers, app):
+    mock_send_batch.return_value = True
+
+    # Create valid excel file in memory
+    df = pd.DataFrame(
+        {
+            "商品ID": ["111", "222"],
+            "商品链接": ["http://l1", "http://l2"],
+            "标题": ["T1", "T2"],
+            "库存": [10, 20],
+            "上架编码": ["C1", "C2"],
+        }
+    )
+
+    excel_file = BytesIO()
+    df.to_excel(excel_file, index=False)
+    excel_file.seek(0)
+
+    data = {"file": (excel_file, "test.xlsx")}
+
+    response = client.post(
+        "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
+    )
+    assert response.status_code == 201
+    assert "processed 2 product listings" in response.json["message"]
+
+    with app.app_context():
+        assert ProductListing.query.count() == 2
+        pl = ProductListing.query.filter_by(product_id="111").first()
+        assert pl.status == "是否完成"  # Should be updated after callback
+
+
+@patch("taobaoutils.api.resources._send_batch_tasks_to_scheduler")
+def test_upload_excel_scheduler_fail(mock_send_batch, client, auth_headers, app):
+    mock_send_batch.return_value = False
+
+    df = pd.DataFrame({"商品ID": ["333"], "商品链接": ["http://l3"], "标题": ["T3"], "库存": [30], "上架编码": ["C3"]})
+
+    excel_file = BytesIO()
+    df.to_excel(excel_file, index=False)
+    excel_file.seek(0)
+
+    data = {"file": (excel_file, "fails.xlsx")}
+
+    response = client.post(
+        "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
+    )
+    assert response.status_code == 201
+
+    with app.app_context():
+        pl = ProductListing.query.filter_by(product_id="333").first()
+        # Status remains "Uploaded" if scheduler send fails
+        assert pl.status == "Uploaded"
+
+
+def test_upload_invalid_file_type(client, auth_headers):
+    data = {"file": (BytesIO(b"dummy"), "test.txt")}
+    response = client.post(
+        "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
+    )
+    assert response.status_code == 400
+    assert "Invalid file type" in response.json["message"]
+
+
+def test_upload_missing_headers(client, auth_headers):
+    df = pd.DataFrame({"WrongHeader": [1]})
+    excel_file = BytesIO()
+    df.to_excel(excel_file, index=False)
+    excel_file.seek(0)
+
+    data = {"file": (excel_file, "bad.xlsx")}
+    response = client.post(
+        "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
+    )
+    assert response.status_code == 400
+    assert "Missing required Excel headers" in response.json["message"]

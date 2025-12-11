@@ -206,17 +206,11 @@ class ExcelUploadResource(Resource):
             new_listings = []
             for _, row in df.iterrows():
                 new_listing = ProductListing(
-                    product_id=str(row[required_headers["商品ID"]])
-                    if pd.notna(row[required_headers["商品ID"]])
-                    else None,
-                    product_link=str(row[required_headers["商品链接"]])
-                    if pd.notna(row[required_headers["商品链接"]])
-                    else None,
-                    title=str(row[required_headers["标题"]]) if pd.notna(row[required_headers["标题"]]) else None,
-                    stock=int(row[required_headers["库存"]]) if pd.notna(row[required_headers["库存"]]) else None,
-                    listing_code=str(row[required_headers["上架编码"]])
-                    if pd.notna(row[required_headers["上架编码"]])
-                    else None,
+                    product_id=str(row["商品ID"]) if pd.notna(row["商品ID"]) else None,
+                    product_link=str(row["商品链接"]) if pd.notna(row["商品链接"]) else None,
+                    title=str(row["标题"]) if pd.notna(row["标题"]) else None,
+                    stock=int(row["库存"]) if pd.notna(row["库存"]) else None,
+                    listing_code=str(row["上架编码"]) if pd.notna(row["上架编码"]) else None,
                     send_time=datetime.utcnow(),  # Default send_time
                     status="Uploaded",  # Default status for uploaded items
                     user_id=current_user().id,  # Assign current user's ID
