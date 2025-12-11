@@ -17,6 +17,7 @@ def mock_listing():
     listing.id = 1
     listing.product_link = "http://test.com/?id=123"
     listing.listing_code = "CODE1"
+    listing.request_config = None  # Default to None to test fallback logic
     return listing
 
 
@@ -74,6 +75,31 @@ def test_send_single_task_success(mock_post, mock_listing, mock_config):
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
         assert kwargs["json"]["target_url"] == "http://target"
+
+
+@patch("taobaoutils.api.resources.requests.post")
+def test_send_single_task_with_request_config(mock_post, mock_listing, mock_config):
+    mock_post.return_value.raise_for_status = MagicMock()
+
+    # Mock RequestConfig
+    req_config = MagicMock()
+    req_config.request_url = "http://custom-target"
+    req_config.request_interval_minutes = 10
+    req_config.random_min = 5
+    req_config.random_max = 20
+    mock_listing.request_config = req_config
+
+    with patch("taobaoutils.api.resources.config_data", mock_config):
+        result = _send_single_task_to_scheduler(mock_listing)
+
+        assert result is True
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        json_data = kwargs["json"]
+        assert json_data["target_url"] == "http://custom-target"
+        assert json_data["request_interval_minutes"] == 10
+        assert json_data["random_min"] == 5
+        assert json_data["random_max"] == 20
 
 
 @patch("taobaoutils.api.resources.requests.post")

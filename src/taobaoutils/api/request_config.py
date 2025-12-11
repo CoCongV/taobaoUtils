@@ -15,6 +15,9 @@ class RequestConfigListResource(Resource):
         self.parser.add_argument("taobao_token", type=str, required=False)
         self.parser.add_argument("payload", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
+        self.parser.add_argument("request_interval_minutes", type=int, required=False)
+        self.parser.add_argument("random_min", type=int, required=False)
+        self.parser.add_argument("random_max", type=int, required=False)
 
     @auth_required
     def get(self):
@@ -34,6 +37,9 @@ class RequestConfigListResource(Resource):
             taobao_token=args["taobao_token"],
             payload=args["payload"],
             header=args["header"],
+            request_interval_minutes=args.get("request_interval_minutes", 8),
+            random_min=args.get("random_min", 2),
+            random_max=args.get("random_max", 15),
         )
 
         db.session.add(new_config)
@@ -50,6 +56,9 @@ class RequestConfigResource(Resource):
         self.parser.add_argument("taobao_token", type=str, required=False)
         self.parser.add_argument("payload", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
+        self.parser.add_argument("request_interval_minutes", type=int, required=False)
+        self.parser.add_argument("random_min", type=int, required=False)
+        self.parser.add_argument("random_max", type=int, required=False)
 
     @auth_required
     def get(self, config_id):
@@ -73,6 +82,12 @@ class RequestConfigResource(Resource):
             config.payload = json.dumps(args["payload"])
         if args["header"]:
             config.header = json.dumps(args["header"])
+        if args["request_interval_minutes"] is not None:
+            config.request_interval_minutes = args["request_interval_minutes"]
+        if args["random_min"] is not None:
+            config.random_min = args["random_min"]
+        if args["random_max"] is not None:
+            config.random_max = args["random_max"]
 
         db.session.commit()
 

@@ -27,19 +27,23 @@ def test_create_request_config(client, auth_headers):
         "taobao_token": "token123",
         "payload": {"a": 1},
         "header": {"x": 1},
+        "request_interval_minutes": 10,
+        "random_min": 5,
+        "random_max": 20,
     }
     response = client.post("/api/request-configs", json=data, headers=auth_headers)
     assert response.status_code == 201
     assert response.json["name"] == "Test Config"
     assert response.json["request_url"] == "http://example.com/api"
-    # User ID check might fail if we don't know the exact ID, but based on fixture it should be 1
-    # assert response.json["user_id"] == 1
+    assert response.json["request_interval_minutes"] == 10
+    assert response.json["random_min"] == 5
+    assert response.json["random_max"] == 20
 
 
 def test_get_request_config_detail(client, auth_headers, app):
     with app.app_context():
         # User created in auth_headers fixture has ID 1 (first user)
-        rc = RequestConfig(user_id=1, name="Config 1", request_url="http://old.com")
+        rc = RequestConfig(user_id=1, name="Config 1", request_url="http://old.com", request_interval_minutes=8)
         db.session.add(rc)
         db.session.commit()
         rc_id = rc.id
@@ -48,6 +52,7 @@ def test_get_request_config_detail(client, auth_headers, app):
     assert response.status_code == 200
     assert response.json["name"] == "Config 1"
     assert response.json["request_url"] == "http://old.com"
+    assert response.json["request_interval_minutes"] == 8
 
 
 def test_update_request_config(client, auth_headers, app):
@@ -57,13 +62,19 @@ def test_update_request_config(client, auth_headers, app):
         db.session.commit()
         rc_id = rc.id
 
-    data = {"name": "Updated Config", "request_url": "http://new.com", "payload": {"b": 2}}
+    data = {
+        "name": "Updated Config",
+        "request_url": "http://new.com",
+        "payload": {"b": 2},
+        "request_interval_minutes": 5,
+    }
     response = client.put(f"/api/request-configs/{rc_id}", json=data, headers=auth_headers)
 
     assert response.status_code == 200
     assert response.json["name"] == "Updated Config"
     assert response.json["request_url"] == "http://new.com"
     assert response.json["payload"] == {"b": 2}
+    assert response.json["request_interval_minutes"] == 5
 
 
 def test_delete_request_config(client, auth_headers, app):

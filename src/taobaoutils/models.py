@@ -190,15 +190,34 @@ class RequestConfig(db.Model):
     payload = db.Column(db.Text, nullable=True)  # 存储为JSON字符串
     header = db.Column(db.Text, nullable=True)  # 存储为JSON字符串，用于HTTP头
 
+    # Scheduler Params
+    request_interval_minutes = db.Column(db.Integer, default=8, nullable=True)
+    random_min = db.Column(db.Integer, default=2, nullable=True)
+    random_max = db.Column(db.Integer, default=15, nullable=True)
+
     user = db.relationship("User", backref="request_configs", lazy=True)
 
-    def __init__(self, user_id, name, request_url=None, taobao_token=None, payload=None, header=None):
+    def __init__(
+        self,
+        user_id,
+        name,
+        request_url=None,
+        taobao_token=None,
+        payload=None,
+        header=None,
+        request_interval_minutes=8,
+        random_min=2,
+        random_max=15,
+    ):
         self.user_id = user_id
         self.name = name
         self.request_url = request_url
         self.taobao_token = taobao_token
         self.payload = json.dumps(payload) if payload else None
         self.header = json.dumps(header) if header else None
+        self.request_interval_minutes = request_interval_minutes
+        self.random_min = random_min
+        self.random_max = random_max
 
     def __repr__(self):
         return f"<RequestConfig {self.id} - {self.name}>"
@@ -257,6 +276,9 @@ class RequestConfig(db.Model):
             "taobao_token": self.taobao_token,
             "payload": payload_obj,
             "header": header_obj,
+            "request_interval_minutes": self.request_interval_minutes,
+            "random_min": self.random_min,
+            "random_max": self.random_max,
         }
 
 

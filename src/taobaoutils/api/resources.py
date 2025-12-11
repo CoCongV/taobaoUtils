@@ -52,12 +52,26 @@ def _send_single_task_to_scheduler(product_listing):
 
     payload = _get_payload_from_listing(product_listing)
     cookie = config_data.get("custom_headers", {})
-    target_url = config_data.get("TARGET_URL")
+
+    if product_listing.request_config:
+        req_config = product_listing.request_config
+        target_url = req_config.request_url
+        request_interval_minutes = req_config.request_interval_minutes
+        random_min = req_config.random_min
+        random_max = req_config.random_max
+    else:
+        target_url = config_data.get("TARGET_URL")
+        request_interval_minutes = config_data.get("REQUEST_INTERVAL_MINUTES", 8)
+        random_min = config_data.get("RANDOM_INTERVAL_SECONDS_MIN", 2)
+        random_max = config_data.get("RANDOM_INTERVAL_SECONDS_MAX", 15)
 
     task_data = {
         "cookie": cookie,
         "payload": payload,
         "target_url": target_url,
+        "request_interval_minutes": request_interval_minutes,
+        "random_min": random_min,
+        "random_max": random_max,
         "send_time": datetime.utcnow().timestamp(),
     }
 
@@ -82,11 +96,19 @@ def _send_batch_tasks_to_scheduler(product_listings):
 
     payloads = [_get_payload_from_listing(listing) for listing in product_listings]
     cookie = config_data.get("custom_headers", {})
-    target_url = config_data.get("TARGET_URL")
 
-    request_interval_minutes = config_data.get("REQUEST_INTERVAL_MINUTES", 8)
-    random_min = config_data.get("RANDOM_INTERVAL_SECONDS_MIN", 2)
-    random_max = config_data.get("RANDOM_INTERVAL_SECONDS_MAX", 15)
+    # Use config from the first listing for batch parameters
+    if product_listings and product_listings[0].request_config:
+        req_config = product_listings[0].request_config
+        target_url = req_config.request_url
+        request_interval_minutes = req_config.request_interval_minutes
+        random_min = req_config.random_min
+        random_max = req_config.random_max
+    else:
+        target_url = config_data.get("TARGET_URL")
+        request_interval_minutes = config_data.get("REQUEST_INTERVAL_MINUTES", 8)
+        random_min = config_data.get("RANDOM_INTERVAL_SECONDS_MIN", 2)
+        random_max = config_data.get("RANDOM_INTERVAL_SECONDS_MAX", 15)
 
     interval_seconds = (request_interval_minutes * 60) + random.uniform(random_min, random_max)
 
