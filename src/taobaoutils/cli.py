@@ -33,16 +33,6 @@ def serve(host, port):
         sys.exit(1)
 
 
-@main.command(name="process")
-@click.argument("excel_path", type=click.Path(exists=True, dir_okay=False, readable=True))
-def process_excel_command(excel_path):  # pragma: no cover
-    """Process the Excel file specified by path."""
-    logger.info("Processing Excel file: %s...", excel_path)
-    from taobaoutils.excel_processor import process_excel_main
-
-    process_excel_main(excel_path)
-
-
 @main.command()
 @click.option("--coverage", is_flag=True, default=False, help="Run tests with coverage report.")
 def test(coverage):
