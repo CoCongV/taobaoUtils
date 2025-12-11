@@ -53,17 +53,21 @@ def _send_single_task_to_scheduler(product_listing):
     payload = _get_payload_from_listing(product_listing)
     cookie = config_data.get("custom_headers", {})
 
-    if product_listing.request_config:
-        req_config = product_listing.request_config
+    req_config = product_listing.request_config
+    if req_config:
         target_url = req_config.request_url
         request_interval_minutes = req_config.request_interval_minutes
         random_min = req_config.random_min
         random_max = req_config.random_max
     else:
-        target_url = config_data.get("TARGET_URL")
-        request_interval_minutes = config_data.get("REQUEST_INTERVAL_MINUTES", 8)
-        random_min = config_data.get("RANDOM_INTERVAL_SECONDS_MIN", 2)
-        random_max = config_data.get("RANDOM_INTERVAL_SECONDS_MAX", 15)
+        # Should not happen if validation works, but safe default or error?
+        # User said "not needed", implying we trust it exists.
+        # But `lazy=True` might mean we need to ensure it's loaded? No, SQLAlchemy handles it.
+        # I'll log a warning if missing and return False or just let it fail?
+        # User said "not needed", so I will assume it is present. But to be safe against AttributeError if somehow None,
+        # I will leave a guard but NO fallback to config_data.
+        logger.error("ProductListing %s missing request_config!", product_listing.id)
+        return False
 
     task_data = {
         "cookie": cookie,
@@ -98,17 +102,19 @@ def _send_batch_tasks_to_scheduler(product_listings):
     cookie = config_data.get("custom_headers", {})
 
     # Use config from the first listing for batch parameters
-    if product_listings and product_listings[0].request_config:
-        req_config = product_listings[0].request_config
-        target_url = req_config.request_url
-        request_interval_minutes = req_config.request_interval_minutes
-        random_min = req_config.random_min
-        random_max = req_config.random_max
-    else:
-        target_url = config_data.get("TARGET_URL")
-        request_interval_minutes = config_data.get("REQUEST_INTERVAL_MINUTES", 8)
-        random_min = config_data.get("RANDOM_INTERVAL_SECONDS_MIN", 2)
-        random_max = config_data.get("RANDOM_INTERVAL_SECONDS_MAX", 15)
+    if not product_listings:
+        logger.warning("No product listings provided for batch task.")
+        return False
+
+    req_config = product_listings[0].request_config
+    if not req_config:
+        logger.error("ProductListing %s missing request_config, cannot send batch task.", product_listings[0].id)
+        return False
+
+    target_url = req_config.request_url
+    request_interval_minutes = req_config.request_interval_minutes
+    random_min = req_config.random_min
+    random_max = req_config.random_max
 
     interval_seconds = (request_interval_minutes * 60) + random.uniform(random_min, random_max)
 

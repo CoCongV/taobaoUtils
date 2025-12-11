@@ -17,7 +17,11 @@ def mock_listing():
     listing.id = 1
     listing.product_link = "http://test.com/?id=123"
     listing.listing_code = "CODE1"
-    listing.request_config = None  # Default to None to test fallback logic
+    listing.request_config = MagicMock()
+    listing.request_config.request_url = "http://target"
+    listing.request_config.request_interval_minutes = 1
+    listing.request_config.random_min = 2
+    listing.request_config.random_max = 3
     return listing
 
 
@@ -100,6 +104,15 @@ def test_send_single_task_with_request_config(mock_post, mock_listing, mock_conf
         assert json_data["request_interval_minutes"] == 10
         assert json_data["random_min"] == 5
         assert json_data["random_max"] == 20
+
+
+@patch("taobaoutils.api.resources.requests.post")
+def test_send_single_task_no_config(mock_post, mock_listing, mock_config):
+    mock_listing.request_config = None
+    with patch("taobaoutils.api.resources.config_data", mock_config):
+        result = _send_single_task_to_scheduler(mock_listing)
+        assert result is False
+        mock_post.assert_not_called()
 
 
 @patch("taobaoutils.api.resources.requests.post")
