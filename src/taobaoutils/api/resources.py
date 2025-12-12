@@ -107,7 +107,6 @@ def _send_batch_tasks_to_scheduler(product_listings):
         req_config = listing.request_config
 
         # Parse header
-        # Parse header
         header = None
         try:
             header = json.loads(req_config.header)
@@ -126,7 +125,7 @@ def _send_batch_tasks_to_scheduler(product_listings):
             "name": listing.title or f"Product {listing.id}",
             "start_time": datetime.utcnow().timestamp(),
             "header": header,
-            "method": "GET",
+            "method": req_config.method,
             "request_url": scheduler_url,  # Per user instruction
             "callback_url": callback_url,
             "callback_id": str(listing.id),

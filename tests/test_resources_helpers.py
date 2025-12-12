@@ -133,6 +133,8 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
     mock_listing.request_config.header = '{"Cookie": "user_{id}"}'
     # Use body instead of payload, with templates
     mock_listing.request_config.body = '{"title": "{title}", "url": "{product_link}"}'
+    # Set method
+    mock_listing.request_config.method = "PUT"
     # Mock generate_body to simulate model behavior OR rely on actual model if not mocked?
     # mock_listing.request_config is a MagicMock. `generate_body` needs to be mocked or implemented.
     # If it is a MagicMock, I must mock the return value OF generate_body.
@@ -160,6 +162,7 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
         assert len(json_data["tasks_data"]) == 1
         item = json_data["tasks_data"][0]
         assert item["name"] == "TestProduct"
+        assert item["method"] == "PUT"
         # Verify raw templates are passed for header (no substitution)
         assert item["header"] == {"Cookie": "user_{id}"}
         # Verify SUBSTITUTED values for body (from generate_body)

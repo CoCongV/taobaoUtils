@@ -29,11 +29,13 @@ def test_create_request_config(client, auth_headers):
         "request_interval_minutes": 10,
         "random_min": 5,
         "random_max": 20,
+        "method": "PUT",
     }
     response = client.post("/api/request-configs", json=data, headers=auth_headers)
     assert response.status_code == 201
     assert response.json["name"] == "Test Config"
     assert response.json["request_url"] == "http://example.com/api"
+    assert response.json["method"] == "PUT"
     assert response.json["request_interval_minutes"] == 10
     assert response.json["random_min"] == 5
     assert response.json["random_max"] == 20
@@ -66,6 +68,7 @@ def test_update_request_config(client, auth_headers, app):
     data = {
         "name": "Updated Config",
         "request_url": "http://new.com",
+        "method": "PATCH",
         "body": {"b": 2},
         "request_interval_minutes": 5,
     }
@@ -74,6 +77,7 @@ def test_update_request_config(client, auth_headers, app):
     assert response.status_code == 200
     assert response.json["name"] == "Updated Config"
     assert response.json["request_url"] == "http://new.com"
+    assert response.json["method"] == "PATCH"
     assert response.json["body"] == {"b": 2}
     assert response.json["request_interval_minutes"] == 5
 
@@ -91,3 +95,24 @@ def test_delete_request_config(client, auth_headers, app):
     # Verify deletion
     with app.app_context():
         assert db.session.get(RequestConfig, rc_id) is None
+
+
+def test_create_request_config_invalid_method(client, auth_headers):
+    data = {
+        "name": "Invalid Config",
+        "method": "INVALID",
+        "body": {},
+        "header": {},
+    }
+    response = client.post("/api/request-configs", json=data, headers=auth_headers)
+    assert response.status_code == 400
+    assert "Invalid HTTP method" in response.json["message"]
+    data = {
+        "name": "Invalid Config",
+        "method": "INVALID",
+        "body": {},
+        "header": {},
+    }
+    response = client.post("/api/request-configs", json=data, headers=auth_headers)
+    assert response.status_code == 400
+    assert "Invalid HTTP method" in response.json["message"]

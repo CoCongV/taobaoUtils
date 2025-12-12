@@ -6,12 +6,15 @@ from flask_restful import Resource, reqparse
 from taobaoutils.app import db
 from taobaoutils.models import RequestConfig
 
+VALID_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
+
 
 class RequestConfigListResource(Resource):
     def __init__(self):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument("name", type=str, required=True, help="Name is required")
         self.parser.add_argument("request_url", type=str, required=False)
+        self.parser.add_argument("method", type=str, required=False, default="POST")
         self.parser.add_argument("body", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
         self.parser.add_argument("request_interval_minutes", type=int, required=False)
@@ -29,10 +32,15 @@ class RequestConfigListResource(Resource):
         args = self.parser.parse_args()
         user_id = current_user().id
 
+        method = args.get("method", "POST").upper()
+        if method not in VALID_METHODS:
+            return {"message": f"Invalid HTTP method. Allowed: {', '.join(VALID_METHODS)}"}, 400
+
         new_config = RequestConfig(
             user_id=user_id,
             name=args["name"],
             request_url=args.get("request_url"),
+            method=method,
             body=args["body"],
             header=args["header"],
             request_interval_minutes=args.get("request_interval_minutes", 8),
@@ -51,6 +59,7 @@ class RequestConfigResource(Resource):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument("name", type=str, required=False)
         self.parser.add_argument("request_url", type=str, required=False)
+        self.parser.add_argument("method", type=str, required=False)
         self.parser.add_argument("body", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
         self.parser.add_argument("request_interval_minutes", type=int, required=False)
@@ -73,6 +82,11 @@ class RequestConfigResource(Resource):
             config.name = args["name"]
         if args["request_url"]:
             config.request_url = args["request_url"]
+        if args["method"]:
+            method = args["method"].upper()
+            if method not in VALID_METHODS:
+                return {"message": f"Invalid HTTP method. Allowed: {', '.join(VALID_METHODS)}"}, 400
+            config.method = method
         if args["body"]:
             config.body = json.dumps(args["body"])
         if args["header"]:

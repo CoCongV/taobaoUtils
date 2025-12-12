@@ -53,7 +53,18 @@ def test_request_config_model(session):
     session.commit()
 
     assert rc.id is not None
+    assert rc.method == "POST"
     assert str(rc) == "<RequestConfig 1 - Test Config>"
+
+    # Test custom method
+    rc2 = RequestConfig(user_id=u.id, name="Config 2", body={}, header={}, method="GET")
+    session.add(rc2)
+    session.commit()
+    assert rc2.method == "GET"
+
+    # Test to_dict
+    d = rc.to_dict()
+    assert d["method"] == "POST"
 
     # Test generate_body
     class MockProduct:
