@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from taobaoutils.app import db, guard
-from taobaoutils.models import ProductListing, RequestConfig, User
+from taobaoutils.models import APIToken, ProductListing, RequestConfig, User
 
 
 @pytest.fixture
@@ -21,8 +21,17 @@ def auth_headers(app):
         db.session.add(rc)
         db.session.commit()
 
+        # Create Test Token
+        _, token_obj = APIToken.create_token(user_id=user.id, name="TestToken", scopes=["read"])
+        db.session.add(token_obj)
+        db.session.commit()
+
         token = guard.encode_jwt_token(user)
-        return {"Authorization": f"Bearer {token}", "X-Request-Config-ID": str(rc.id)}
+        return {
+            "Authorization": f"Bearer {token}",
+            "X-Request-Config-ID": str(rc.id),
+            "X-API-Token-ID": str(token_obj.id),
+        }
 
 
 @patch("taobaoutils.api.resources._send_batch_tasks_to_scheduler")
@@ -45,7 +54,11 @@ def test_upload_excel_success(mock_send_batch, client, auth_headers, app):
     df.to_excel(excel_file, index=False)
     excel_file.seek(0)
 
-    data = {"file": (excel_file, "test.xlsx"), "request_config_id": rc_id}
+    data = {
+        "file": (excel_file, "test.xlsx"),
+        "request_config_id": rc_id,
+        "api_token_id": auth_headers.get("X-API-Token-ID", "1"),
+    }
 
     response = client.post(
         "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
@@ -70,7 +83,11 @@ def test_upload_excel_scheduler_fail(mock_send_batch, client, auth_headers, app)
     df.to_excel(excel_file, index=False)
     excel_file.seek(0)
 
-    data = {"file": (excel_file, "fails.xlsx"), "request_config_id": rc_id}
+    data = {
+        "file": (excel_file, "fails.xlsx"),
+        "request_config_id": rc_id,
+        "api_token_id": auth_headers.get("X-API-Token-ID", "1"),
+    }
 
     response = client.post(
         "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
@@ -84,7 +101,11 @@ def test_upload_excel_scheduler_fail(mock_send_batch, client, auth_headers, app)
 
 
 def test_upload_invalid_file_type(client, auth_headers):
-    data = {"file": (BytesIO(b"dummy"), "test.txt"), "request_config_id": auth_headers.get("X-Request-Config-ID", "1")}
+    data = {
+        "file": (BytesIO(b"dummy"), "test.txt"),
+        "request_config_id": auth_headers.get("X-Request-Config-ID", "1"),
+        "api_token_id": auth_headers.get("X-API-Token-ID", "1"),
+    }
     response = client.post(
         "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
     )
@@ -98,7 +119,11 @@ def test_upload_missing_headers(client, auth_headers):
     df.to_excel(excel_file, index=False)
     excel_file.seek(0)
 
-    data = {"file": (excel_file, "bad.xlsx"), "request_config_id": auth_headers.get("X-Request-Config-ID", "1")}
+    data = {
+        "file": (excel_file, "bad.xlsx"),
+        "request_config_id": auth_headers.get("X-Request-Config-ID", "1"),
+        "api_token_id": auth_headers.get("X-API-Token-ID", "1"),
+    }
     response = client.post(
         "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
     )

@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from taobaoutils.app import db, guard
-from taobaoutils.models import ProductListing, RequestConfig, User
+from taobaoutils.models import APIToken, ProductListing, RequestConfig, User
 
 
 @pytest.fixture
@@ -20,8 +20,17 @@ def auth_headers(app):
         db.session.add(rc)
         db.session.commit()
 
+        # Create an API Token
+        _, token_obj = APIToken.create_token(user_id=user.id, name="TestToken", scopes=["read"])
+        db.session.add(token_obj)
+        db.session.commit()
+
         token = guard.encode_jwt_token(user)
-        return {"Authorization": f"Bearer {token}", "X-Request-Config-ID": str(rc.id)}
+        return {
+            "Authorization": f"Bearer {token}",
+            "X-Request-Config-ID": str(rc.id),
+            "X-API-Token-ID": str(token_obj.id),
+        }
 
 
 @patch("taobaoutils.api.resources._send_single_task_to_scheduler")
@@ -34,6 +43,7 @@ def test_create_listing_success(mock_send, client, auth_headers, app):
         "product_link": "http://example.com/item",
         "listing_code": "CODE123",
         "request_config_id": rc_id,
+        "api_token_id": int(auth_headers["X-API-Token-ID"]),
     }
 
     response = client.post("/api/product-listings", json=data, headers=auth_headers)
@@ -53,7 +63,12 @@ def test_create_listing_scheduler_fail(mock_send, client, auth_headers, app):
     mock_send.return_value = False
     rc_id = int(auth_headers["X-Request-Config-ID"])
 
-    data = {"status": "requested", "product_link": "http://example.com/fail", "request_config_id": rc_id}
+    data = {
+        "status": "requested",
+        "product_link": "http://example.com/fail",
+        "request_config_id": rc_id,
+        "api_token_id": int(auth_headers["X-API-Token-ID"]),
+    }
 
     response = client.post("/api/product-listings", json=data, headers=auth_headers)
     assert response.status_code == 201

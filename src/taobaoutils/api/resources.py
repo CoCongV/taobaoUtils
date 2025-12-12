@@ -161,7 +161,7 @@ class ProductListingResource(Resource):  # Renamed class
         self.parser.add_argument("stock", type=int)
         self.parser.add_argument("listing_code", type=str)
         self.parser.add_argument("request_config_id", type=int, required=True, help="RequestConfig ID is required")
-        self.parser.add_argument("api_token_id", type=int, required=False)
+        self.parser.add_argument("api_token_id", type=int, required=True, help="API Token ID is required")
 
     @auth_required
     def get(self, log_id=None):
@@ -230,7 +230,7 @@ class ExcelUploadResource(Resource):
         parser.add_argument(
             "request_config_id", type=int, location="form", required=True, help="RequestConfig ID is required"
         )  # Add request_config_id
-        parser.add_argument("api_token_id", type=int, location="form", required=False)
+        parser.add_argument("api_token_id", type=int, location="form", required=True, help="API Token ID is required")
         args = parser.parse_args()
 
         excel_file = args["file"]
