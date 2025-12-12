@@ -65,6 +65,40 @@ linkData = [
 User-Agent = "Mozilla/5.0 ..."
 ```
 
+### Request Payload 模板示例
+
+在 `RequestConfig` 中，`payload` 字段支持使用 JSON 格式的模板。你可以使用 `{placeholder}` 语法来插入动态值。
+
+**可用占位符：**
+- `{title}`: 商品标题
+- `{product_link}`: 商品链接
+- `{product_id}`: 商品ID
+- `{stock}`: 库存
+- `{listing_code}`: 商家编码
+- `{id}`: ProductListing ID
+- `{user_id}`: 用户ID
+
+**示例 Payload 模板：**
+
+```json
+{
+  "sub_user": "12345678",
+  "userids": [
+    "87654321"
+  ],
+  "filter_copied": true,
+  "copy_type": 1,
+  "param_id": "1001",
+  "is_search": "0",
+  "linkData": [
+    {
+      "url": "{product_link}",
+      "num_iid": "{product_id}"
+    }
+  ]
+}
+```
+
 ## 使用方法
 
 ### 启动 API 服务器
