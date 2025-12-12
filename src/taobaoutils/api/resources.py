@@ -107,20 +107,19 @@ def _send_batch_tasks_to_scheduler(product_listings):
         req_config = listing.request_config
 
         # Parse header
+        # Parse header
         header = None
-        if req_config.header:
-            try:
-                header = json.loads(req_config.header)
-            except json.JSONDecodeError:
-                logger.warning("Failed to parse header for RequestConfig %s", req_config.id)
+        try:
+            header = json.loads(req_config.header)
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse header for RequestConfig %s", req_config.id)
 
         # Parse payload as body
         body = None
-        if req_config.payload:
-            try:
-                body = json.loads(req_config.payload)
-            except json.JSONDecodeError:
-                logger.warning("Failed to parse payload for RequestConfig %s", req_config.id)
+        try:
+            body = json.loads(req_config.payload)
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse payload for RequestConfig %s", req_config.id)
 
         task_item = {
             "name": listing.title or f"Product {listing.id}",
