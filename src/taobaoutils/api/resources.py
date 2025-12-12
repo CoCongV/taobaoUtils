@@ -106,40 +106,21 @@ def _send_batch_tasks_to_scheduler(product_listings):
 
         req_config = listing.request_config
 
-        # Prepare parameters for template substitution
-        params = {
-            "title": listing.title or "",
-            "product_link": listing.product_link or "",
-            "product_id": listing.product_id or "",
-            "stock": listing.stock or 0,
-            "listing_code": listing.listing_code or "",
-            "id": listing.id,
-            "user_id": listing.user_id,
-        }
-
-        # Helper function to substitute and parse JSON
-        def process_template(template_str, params):
-            if not template_str:
-                return None
+        # Parse header
+        header = None
+        if req_config.header:
             try:
-                # Use simple string replacement to avoid str.format's issues with JSON braces
-                substituted_str = template_str
-                for key, value in params.items():
-                    # Handle None/Types
-                    val_str = str(value) if value is not None else ""
-                    # Escape quotes if necessary? JSON string values are usually quoted.
-                    # If placeholder is inside quotes: "url": "{url}" -> "url": "http://..."
-                    # If placeholder is raw: "count": {stock} -> "count": 10
-                    # For now, simple replace.
-                    substituted_str = substituted_str.replace(f"{{{key}}}", val_str)
+                header = json.loads(req_config.header)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse header for RequestConfig %s", req_config.id)
 
-                return json.loads(substituted_str)
-            except (json.JSONDecodeError, Exception) as e:
-                logger.warning("Failed to process template for RequestConfig %s: %s", req_config.id, e)
-                return None
-
-        header = process_template(req_config.header, params)
-        body = process_template(req_config.payload, params)
+        # Parse payload as body
+        body = None
+        if req_config.payload:
+            try:
+                body = json.loads(req_config.payload)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse payload for RequestConfig %s", req_config.id)
 
         task_item = {
             "name": listing.title or f"Product {listing.id}",

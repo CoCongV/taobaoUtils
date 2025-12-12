@@ -153,9 +153,9 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
         assert len(json_data["tasks_data"]) == 1
         item = json_data["tasks_data"][0]
         assert item["name"] == "TestProduct"
-        # Verify substitutions
-        assert item["header"] == {"Cookie": "user_99"}
-        assert item["body"] == {"title": "TestProduct", "url": "http://example.com"}
+        # Verify raw templates are passed (no substitution)
+        assert item["header"] == {"Cookie": "user_{id}"}
+        assert item["body"] == {"title": "{title}", "url": "{product_link}"}
         assert item["callback_url"] == "http://callback"
         assert item["callback_id"] == "99"
 
