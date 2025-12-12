@@ -99,6 +99,34 @@ User-Agent = "Mozilla/5.0 ..."
 }
 ```
 
+### Request Header 模板示例
+
+`header` 字段也支持 JSON 格式，可以在其中使用占位符。以下是一个配置了各类请求头的示例：
+
+```json
+{
+  "Host": "example.com",
+  "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0",
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "zh-CN,en-US;q=0.7,en;q=0.3",
+  "Accept-Encoding": "gzip, deflate, br, zstd",
+  "Content-Type": "application/json",
+  "token": "your_fake_token_value",
+  "appname": "your_fake_appname",
+  "Content-Length": "215",
+  "Origin": "https://example.com",
+  "DNT": "1",
+  "Sec-GPC": "1",
+  "Connection": "keep-alive",
+  "Referer": "https://example.com/",
+  "Cookie": "token=your_fake_token_value; appname=your_fake_appname",
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "same-origin",
+  "Priority": "u=0"
+}
+```
+
 ## 使用方法
 
 ### 启动 API 服务器
