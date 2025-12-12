@@ -66,8 +66,8 @@ def test_request_config_model(session):
 
     # Test generate_body
     class MockProduct:
-        product_link = "http://test.com"
-        title = "Title"
+        def to_dict(self):
+            return {"product_link": "http://test.com", "title": "Title"}
 
     generated = rc.generate_body(MockProduct())
     assert generated == {"u": "http://test.com"}

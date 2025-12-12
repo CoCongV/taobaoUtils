@@ -240,16 +240,8 @@ class RequestConfig(db.Model):
 
         try:
             template_str = self.body
-            # Mapping of placeholders to product attributes
-            params = {
-                "title": getattr(product, "title", "") or "",
-                "product_link": getattr(product, "product_link", "") or "",
-                "product_id": getattr(product, "product_id", "") or "",
-                "stock": getattr(product, "stock", 0) or 0,
-                "listing_code": getattr(product, "listing_code", "") or "",
-                "id": getattr(product, "id", "") or "",
-                "user_id": getattr(product, "user_id", "") or "",
-            }  # Using getattr to be safe if product is dict or partial object? 'product' is usually ORM object.
+            # Use to_dict() to get product attributes
+            params = product.to_dict()
 
             for key, value in params.items():
                 val_str = str(value) if value is not None else ""
