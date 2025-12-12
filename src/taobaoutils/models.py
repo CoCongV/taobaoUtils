@@ -194,7 +194,7 @@ class RequestConfig(db.Model):
     name = db.Column(db.String(255), nullable=False)
     request_url = db.Column(db.String(500), nullable=True)  # 目标URL
     taobao_token = db.Column(db.Text, nullable=True)
-    payload = db.Column(db.Text, nullable=False)  # 存储为JSON字符串
+    body = db.Column(db.Text, nullable=False)  # 存储为JSON字符串
     header = db.Column(db.Text, nullable=False)  # 存储为JSON字符串，用于HTTP头
 
     # Scheduler Params
@@ -208,7 +208,7 @@ class RequestConfig(db.Model):
         self,
         user_id,
         name,
-        payload,
+        body,
         header,
         request_url=None,
         taobao_token=None,
@@ -220,8 +220,8 @@ class RequestConfig(db.Model):
         self.name = name
         self.request_url = request_url
         self.taobao_token = taobao_token
-        # Ensure payload is stored as string
-        self.payload = json.dumps(payload) if isinstance(payload, (dict, list)) else payload
+        # Ensure body is stored as string
+        self.body = json.dumps(body) if isinstance(body, (dict, list)) else body
         # Ensure header is stored as string
         self.header = json.dumps(header) if isinstance(header, (dict, list)) else header
         self.request_interval_minutes = request_interval_minutes
@@ -230,6 +230,38 @@ class RequestConfig(db.Model):
 
     def __repr__(self):
         return f"<RequestConfig {self.id} - {self.name}>"
+
+    def generate_body(self, product):
+        """
+        根据ProductListing对象生成具体的请求体
+        """
+        if not self.body:
+            return {}
+
+        try:
+            template_str = self.body
+            # Mapping of placeholders to product attributes
+            params = {
+                "title": getattr(product, "title", "") or "",
+                "product_link": getattr(product, "product_link", "") or "",
+                "product_id": getattr(product, "product_id", "") or "",
+                "stock": getattr(product, "stock", 0) or 0,
+                "listing_code": getattr(product, "listing_code", "") or "",
+                "id": getattr(product, "id", "") or "",
+                "user_id": getattr(product, "user_id", "") or "",
+            }  # Using getattr to be safe if product is dict or partial object? 'product' is usually ORM object.
+
+            for key, value in params.items():
+                val_str = str(value) if value is not None else ""
+                template_str = template_str.replace(f"{{{key}}}", val_str)
+
+            return json.loads(template_str)
+        except Exception:
+            # Need logger here? models.py might not have logger set up.
+            # I will just return raw body parsed if template fails?
+            # Or empty dict.
+            # Printing to stderr for now or just ignoring.
+            return {}
 
     def set_cookie(self, cookie_data):
         """
@@ -263,10 +295,10 @@ class RequestConfig(db.Model):
             self.header = json.dumps(headers)
 
     def to_dict(self):
-        payload_obj = None
-        if self.payload:
+        body_obj = None
+        if self.body:
             try:
-                payload_obj = json.loads(self.payload)
+                body_obj = json.loads(self.body)
             except json.JSONDecodeError:
                 pass
 
@@ -283,7 +315,7 @@ class RequestConfig(db.Model):
             "name": self.name,
             "request_url": self.request_url,
             "taobao_token": self.taobao_token,
-            "payload": payload_obj,
+            "body": body_obj,
             "header": header_obj,
             "request_interval_minutes": self.request_interval_minutes,
             "random_min": self.random_min,

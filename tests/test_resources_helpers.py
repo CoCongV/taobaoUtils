@@ -131,7 +131,14 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
     mock_post.return_value.raise_for_status = MagicMock()
     # Define templates with placeholders
     mock_listing.request_config.header = '{"Cookie": "user_{id}"}'
-    mock_listing.request_config.payload = '{"title": "{title}", "url": "{product_link}"}'
+    # Use body instead of payload, with templates
+    mock_listing.request_config.body = '{"title": "{title}", "url": "{product_link}"}'
+    # Mock generate_body to simulate model behavior OR rely on actual model if not mocked?
+    # mock_listing.request_config is a MagicMock. `generate_body` needs to be mocked or implemented.
+    # If it is a MagicMock, I must mock the return value OF generate_body.
+    # Wait, the code now calls `req_config.generate_body`. If `req_config` is a MagicMock, `generate_body` does nothing unless side_effect/return_value set.
+    # I should simulate substitution in the mock return value.
+    mock_listing.request_config.generate_body.return_value = {"title": "TestProduct", "url": "http://example.com"}
 
     mock_listing.id = 99
     mock_listing.title = "TestProduct"
@@ -153,9 +160,10 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
         assert len(json_data["tasks_data"]) == 1
         item = json_data["tasks_data"][0]
         assert item["name"] == "TestProduct"
-        # Verify raw templates are passed (no substitution)
+        # Verify raw templates are passed for header (no substitution)
         assert item["header"] == {"Cookie": "user_{id}"}
-        assert item["body"] == {"title": "{title}", "url": "{product_link}"}
+        # Verify SUBSTITUTED values for body (from generate_body)
+        assert item["body"] == {"title": "TestProduct", "url": "http://example.com"}
         assert item["callback_url"] == "http://callback"
         assert item["callback_id"] == "99"
 

@@ -13,7 +13,7 @@ class RequestConfigListResource(Resource):
         self.parser.add_argument("name", type=str, required=True, help="Name is required")
         self.parser.add_argument("request_url", type=str, required=False)
         self.parser.add_argument("taobao_token", type=str, required=False)
-        self.parser.add_argument("payload", type=dict, required=False)
+        self.parser.add_argument("body", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
         self.parser.add_argument("request_interval_minutes", type=int, required=False)
         self.parser.add_argument("random_min", type=int, required=False)
@@ -35,7 +35,7 @@ class RequestConfigListResource(Resource):
             name=args["name"],
             request_url=args.get("request_url"),
             taobao_token=args["taobao_token"],
-            payload=args["payload"],
+            body=args["body"],
             header=args["header"],
             request_interval_minutes=args.get("request_interval_minutes", 8),
             random_min=args.get("random_min", 2),
@@ -54,7 +54,7 @@ class RequestConfigResource(Resource):
         self.parser.add_argument("name", type=str, required=False)
         self.parser.add_argument("request_url", type=str, required=False)
         self.parser.add_argument("taobao_token", type=str, required=False)
-        self.parser.add_argument("payload", type=dict, required=False)
+        self.parser.add_argument("body", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
         self.parser.add_argument("request_interval_minutes", type=int, required=False)
         self.parser.add_argument("random_min", type=int, required=False)
@@ -78,8 +78,8 @@ class RequestConfigResource(Resource):
             config.request_url = args["request_url"]
         if args["taobao_token"]:
             config.taobao_token = args["taobao_token"]
-        if args["payload"]:
-            config.payload = json.dumps(args["payload"])
+        if args["body"]:
+            config.body = json.dumps(args["body"])
         if args["header"]:
             config.header = json.dumps(args["header"])
         if args["request_interval_minutes"] is not None:

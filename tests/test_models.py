@@ -24,7 +24,7 @@ def test_product_listing_model(session):
     session.add(u)
     session.commit()
 
-    rc = RequestConfig(user_id=u.id, name="Config 1", payload={}, header={})
+    rc = RequestConfig(user_id=u.id, name="Config 1", body={}, header={})
     session.add(rc)
     session.commit()
 
@@ -48,7 +48,7 @@ def test_request_config_model(session):
     session.add(u)
     session.commit()
 
-    rc = RequestConfig(user_id=u.id, name="Test Config", payload={}, header={})
+    rc = RequestConfig(user_id=u.id, name="Test Config", body={"u": "{product_link}"}, header={})
     session.add(rc)
     session.commit()
 
@@ -63,6 +63,14 @@ def test_request_config_model(session):
     d = rc.to_dict()
     assert d["name"] == "Test Config"
     assert d["header"]["Cookie"] == "a=1; b=2"
+
+    # Test generate_body
+    class MockProduct:
+        product_link = "http://test.com"
+        title = "Title"
+
+    generated = rc.generate_body(MockProduct())
+    assert generated == {"u": "http://test.com"}
 
 
 def test_api_token_model(session):

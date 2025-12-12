@@ -25,7 +25,7 @@ def test_create_request_config(client, auth_headers):
         "name": "Test Config",
         "request_url": "http://example.com/api",
         "taobao_token": "token123",
-        "payload": {"a": 1},
+        "body": {"a": 1},
         "header": {"x": 1},
         "request_interval_minutes": 10,
         "random_min": 5,
@@ -44,7 +44,7 @@ def test_get_request_config_detail(client, auth_headers, app):
     with app.app_context():
         # User created in auth_headers fixture has ID 1 (first user)
         rc = RequestConfig(
-            user_id=1, name="Config 1", request_url="http://old.com", request_interval_minutes=8, payload={}, header={}
+            user_id=1, name="Config 1", request_url="http://old.com", request_interval_minutes=8, body={}, header={}
         )
         db.session.add(rc)
         db.session.commit()
@@ -59,7 +59,7 @@ def test_get_request_config_detail(client, auth_headers, app):
 
 def test_update_request_config(client, auth_headers, app):
     with app.app_context():
-        rc = RequestConfig(user_id=1, name="Config 1", payload={}, header={})
+        rc = RequestConfig(user_id=1, name="Config 1", body={}, header={})
         db.session.add(rc)
         db.session.commit()
         rc_id = rc.id
@@ -67,7 +67,7 @@ def test_update_request_config(client, auth_headers, app):
     data = {
         "name": "Updated Config",
         "request_url": "http://new.com",
-        "payload": {"b": 2},
+        "body": {"b": 2},
         "request_interval_minutes": 5,
     }
     response = client.put(f"/api/request-configs/{rc_id}", json=data, headers=auth_headers)
@@ -75,13 +75,13 @@ def test_update_request_config(client, auth_headers, app):
     assert response.status_code == 200
     assert response.json["name"] == "Updated Config"
     assert response.json["request_url"] == "http://new.com"
-    assert response.json["payload"] == {"b": 2}
+    assert response.json["body"] == {"b": 2}
     assert response.json["request_interval_minutes"] == 5
 
 
 def test_delete_request_config(client, auth_headers, app):
     with app.app_context():
-        rc = RequestConfig(user_id=1, name="To Delete", payload={}, header={})
+        rc = RequestConfig(user_id=1, name="To Delete", body={}, header={})
         db.session.add(rc)
         db.session.commit()
         rc_id = rc.id
