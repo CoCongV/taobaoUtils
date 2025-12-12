@@ -248,37 +248,6 @@ class RequestConfig(db.Model):
 
         return json.loads(template_str)
 
-    def set_cookie(self, cookie_data):
-        """
-        将cookie数据存入header字段中
-
-        Args:
-            cookie_data: 字典格式的cookie数据
-        """
-        # 获取现有的header数据
-        headers = {}
-        if self.header:
-            try:
-                headers = json.loads(self.header)
-            except json.JSONDecodeError:
-                pass
-
-        # 处理cookie数据并添加到header中
-        if cookie_data:
-            # 检查cookie_data是字典还是字符串
-            if isinstance(cookie_data, dict):
-                # 如果是字典，将其格式化为字符串
-                cookie_str = "; ".join([f"{key}={value}" for key, value in cookie_data.items()])
-            else:
-                # 如果已经是字符串，直接使用
-                cookie_str = str(cookie_data)
-
-            # 将cookie添加到header中
-            headers["Cookie"] = cookie_str
-
-            # 保存更新后的header
-            self.header = json.dumps(headers)
-
     def to_dict(self):
         body_obj = None
         if self.body:

@@ -55,15 +55,6 @@ def test_request_config_model(session):
     assert rc.id is not None
     assert str(rc) == "<RequestConfig 1 - Test Config>"
 
-    # Test cookie setting
-    rc.set_cookie({"a": 1, "b": 2})
-    assert "Cookie" in rc.header
-    assert "a=1" in rc.header
-
-    d = rc.to_dict()
-    assert d["name"] == "Test Config"
-    assert d["header"]["Cookie"] == "a=1; b=2"
-
     # Test generate_body
     class MockProduct:
         def to_dict(self):
