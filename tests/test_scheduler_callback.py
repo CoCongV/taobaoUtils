@@ -22,7 +22,8 @@ def api_auth_headers(app):
 def test_callback_success(client, api_auth_headers, app):
     with app.app_context():
         user = User.query.filter_by(username="cb_user").first()
-        rc = RequestConfig(user_id=user.id, name="Callback Config")
+        # Create RequestConfig
+        rc = RequestConfig(user_id=user.id, name="Callback Config", payload={}, header={})
         db.session.add(rc)
         db.session.commit()
 
@@ -60,7 +61,7 @@ def test_callback_missing_args(client, api_auth_headers):
 def test_callback_partial_update(client, api_auth_headers, app):
     with app.app_context():
         user = User.query.filter_by(username="cb_user").first()
-        rc = RequestConfig(user_id=user.id, name="Callback Config 2")
+        rc = RequestConfig(user_id=user.id, name="Callback Config 2", payload={}, header={})
         db.session.add(rc)
         db.session.commit()
 

@@ -24,7 +24,7 @@ def test_product_listing_model(session):
     session.add(u)
     session.commit()
 
-    rc = RequestConfig(user_id=u.id, name="Config 1")
+    rc = RequestConfig(user_id=u.id, name="Config 1", payload={}, header={})
     session.add(rc)
     session.commit()
 
@@ -48,7 +48,7 @@ def test_request_config_model(session):
     session.add(u)
     session.commit()
 
-    rc = RequestConfig(user_id=u.id, name="Test Config")
+    rc = RequestConfig(user_id=u.id, name="Test Config", payload={}, header={})
     session.add(rc)
     session.commit()
 

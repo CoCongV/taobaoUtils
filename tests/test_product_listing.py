@@ -16,7 +16,7 @@ def auth_headers(app):
         db.session.commit()
 
         # Create a default request config for testing
-        rc = RequestConfig(user_id=user.id, name="Default Config")
+        rc = RequestConfig(user_id=user.id, name="Default Config", payload={}, header={})
         db.session.add(rc)
         db.session.commit()
 

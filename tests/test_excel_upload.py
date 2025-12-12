@@ -17,7 +17,7 @@ def auth_headers(app):
         db.session.commit()
 
         # Create RequestConfig
-        rc = RequestConfig(user_id=user.id, name="Excel Config")
+        rc = RequestConfig(user_id=user.id, name="Excel Config", payload={}, header={})
         db.session.add(rc)
         db.session.commit()
 

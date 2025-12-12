@@ -194,8 +194,8 @@ class RequestConfig(db.Model):
     name = db.Column(db.String(255), nullable=False)
     request_url = db.Column(db.String(500), nullable=True)  # 目标URL
     taobao_token = db.Column(db.Text, nullable=True)
-    payload = db.Column(db.Text, nullable=True)  # 存储为JSON字符串
-    header = db.Column(db.Text, nullable=True)  # 存储为JSON字符串，用于HTTP头
+    payload = db.Column(db.Text, nullable=False)  # 存储为JSON字符串
+    header = db.Column(db.Text, nullable=False)  # 存储为JSON字符串，用于HTTP头
 
     # Scheduler Params
     request_interval_minutes = db.Column(db.Integer, default=8, nullable=True)
@@ -208,10 +208,10 @@ class RequestConfig(db.Model):
         self,
         user_id,
         name,
+        payload,
+        header,
         request_url=None,
         taobao_token=None,
-        payload=None,
-        header=None,
         request_interval_minutes=8,
         random_min=2,
         random_max=15,
@@ -220,8 +220,10 @@ class RequestConfig(db.Model):
         self.name = name
         self.request_url = request_url
         self.taobao_token = taobao_token
-        self.payload = json.dumps(payload) if payload else None
-        self.header = json.dumps(header) if header else None
+        # Ensure payload is stored as string
+        self.payload = json.dumps(payload) if isinstance(payload, (dict, list)) else payload
+        # Ensure header is stored as string
+        self.header = json.dumps(header) if isinstance(header, (dict, list)) else header
         self.request_interval_minutes = request_interval_minutes
         self.random_min = random_min
         self.random_max = random_max

@@ -43,7 +43,9 @@ def test_create_request_config(client, auth_headers):
 def test_get_request_config_detail(client, auth_headers, app):
     with app.app_context():
         # User created in auth_headers fixture has ID 1 (first user)
-        rc = RequestConfig(user_id=1, name="Config 1", request_url="http://old.com", request_interval_minutes=8)
+        rc = RequestConfig(
+            user_id=1, name="Config 1", request_url="http://old.com", request_interval_minutes=8, payload={}, header={}
+        )
         db.session.add(rc)
         db.session.commit()
         rc_id = rc.id
@@ -57,7 +59,7 @@ def test_get_request_config_detail(client, auth_headers, app):
 
 def test_update_request_config(client, auth_headers, app):
     with app.app_context():
-        rc = RequestConfig(user_id=1, name="Config 1")
+        rc = RequestConfig(user_id=1, name="Config 1", payload={}, header={})
         db.session.add(rc)
         db.session.commit()
         rc_id = rc.id
@@ -79,7 +81,7 @@ def test_update_request_config(client, auth_headers, app):
 
 def test_delete_request_config(client, auth_headers, app):
     with app.app_context():
-        rc = RequestConfig(user_id=1, name="To Delete")
+        rc = RequestConfig(user_id=1, name="To Delete", payload={}, header={})
         db.session.add(rc)
         db.session.commit()
         rc_id = rc.id
