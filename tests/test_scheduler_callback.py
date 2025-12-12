@@ -13,7 +13,7 @@ def api_auth_headers(app):
         db.session.add(user)
         db.session.commit()
 
-        token_str, token = APIToken.generate_token(user.id, "TestToken", scopes=["read"], expires_days=30)
+        token_str, token = APIToken.create_token(user.id, "TestToken", scopes=["read"], expires_days=30)
         db.session.add(token)
         db.session.commit()
         return {"Authorization": f"Bearer {token_str}"}

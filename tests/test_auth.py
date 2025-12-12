@@ -1,7 +1,7 @@
 import pytest
 
 from taobaoutils.app import db, guard
-from taobaoutils.models import User
+from taobaoutils.models import APIToken, User
 
 
 @pytest.fixture
@@ -87,8 +87,6 @@ def test_api_token_crud(client, auth_headers, app):
 
     # Verify Deletion
     with app.app_context():
-        from taobaoutils.models import APIToken
-
         assert db.session.get(APIToken, token_id) is None
 
 

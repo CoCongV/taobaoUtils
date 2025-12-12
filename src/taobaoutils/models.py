@@ -3,7 +3,6 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from flask_praetorian import SQLAlchemyUserMixin
-from werkzeug.security import check_password_hash, generate_password_hash
 
 from taobaoutils.app import db, guard
 
@@ -119,30 +118,29 @@ class ProductListing(db.Model):
     __tablename__ = "product_listings"  # Renamed table
 
     id = db.Column(db.Integer, primary_key=True)
-    status = db.Column(db.String(50), nullable=False, default="requested")  # 修改默认值为'requested'
-    send_time = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
-    response_content = db.Column(db.Text, nullable=True)  # 存储API响应内容
-    response_code = db.Column(db.Integer, nullable=True)  # 存储API响应状态码
-
-    # New columns for product listing information
-    product_id = db.Column(db.String(255), nullable=True)  # 淘宝商品ID
-    product_link = db.Column(db.String(500), nullable=True)  # 商品链接
-    title = db.Column(db.String(500), nullable=True)  # 商品标题
-    stock = db.Column(db.Integer, nullable=True)  # 库存
-    listing_code = db.Column(db.String(255), nullable=True)  # 商家编码
-
-    # Foreign key to User model
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-
-    # Foreign key to RequestConfig model
     request_config_id = db.Column(db.Integer, db.ForeignKey("request_configs.id"), nullable=False)
+    api_token_id = db.Column(db.Integer, db.ForeignKey("api_tokens.id"), nullable=True)
+    status = db.Column(db.String(50), default="pending")
+    send_time = db.Column(db.DateTime, default=datetime.utcnow)
+    response_content = db.Column(db.Text, nullable=True)
+    response_code = db.Column(db.Integer, nullable=True)
+    product_id = db.Column(db.String(255), nullable=True)
+    product_link = db.Column(db.Text, nullable=True)
+    title = db.Column(db.String(255), nullable=True)
+    stock = db.Column(db.Integer, nullable=True)
+    listing_code = db.Column(db.String(255), nullable=True)  # 上架编码
+
+    # Relationships
+
     request_config = db.relationship("RequestConfig", backref="product_listings", lazy=True)
+    api_token = db.relationship("APIToken", backref="product_listings", lazy=True)
 
     def __init__(
         self,
         user_id,
         request_config_id,
-        status="requested",
+        status="pending",
         send_time=None,
         response_content=None,
         response_code=None,
@@ -151,9 +149,11 @@ class ProductListing(db.Model):
         title=None,
         stock=None,
         listing_code=None,
+        api_token_id=None,
     ):
         self.user_id = user_id
         self.request_config_id = request_config_id
+        self.api_token_id = api_token_id
         self.status = status
         self.send_time = send_time or datetime.now(UTC)
         self.response_content = response_content
@@ -181,6 +181,7 @@ class ProductListing(db.Model):
             "listing_code": self.listing_code,  # 上架编码
             "user_id": self.user_id,
             "request_config_id": self.request_config_id,
+            "api_token_id": self.api_token_id,
         }
 
 
@@ -279,24 +280,27 @@ class APIToken(db.Model):
     __tablename__ = "api_tokens"
 
     id = db.Column(db.Integer, primary_key=True)
-    token_hash = db.Column(db.String(255), nullable=False, unique=True, index=True)
-    name = db.Column(db.String(100), nullable=False)  # Token名称，方便用户识别
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    scopes = db.Column(db.Text, nullable=True)  # JSON格式存储权限范围
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
-    expires_at = db.Column(db.DateTime, nullable=True)  # 可选的过期时间
-    last_used_at = db.Column(db.DateTime, nullable=True)  # 最后使用时间
-    is_active = db.Column(db.Boolean, default=True, nullable=False)
-    prefix = db.Column(db.String(10), nullable=False)  # Token前缀，用于识别
-    suffix = db.Column(db.String(6), nullable=False)  # Token后缀，用于用户识别
+    name = db.Column(db.String(255), nullable=False)
+    token = db.Column(db.String(255), unique=True, nullable=False)  # 存储原始token
+    scopes = db.Column(db.Text, nullable=True)  # JSON list of scopes
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    prefix = db.Column(db.String(10), nullable=False)  # 用于显示的前缀
+    suffix = db.Column(db.String(6), nullable=False)  # 用于显示的后缀
 
     # 关联到用户
     user = db.relationship("User", backref=db.backref("api_tokens", lazy=True))
 
-    @staticmethod
-    def generate_token(user_id, name, scopes=None, expires_days=None):
+    def __repr__(self):
+        return f"<APIToken {self.name}>"
+
+    @classmethod
+    def create_token(cls, user_id, name, scopes=None, expires_days=None):
         """
-        生成新的API Token
+        创建一个新的API Token
 
         Args:
             user_id: 用户ID
@@ -319,12 +323,9 @@ class APIToken(db.Model):
         if expires_days:
             expires_at = datetime.now(UTC) + timedelta(days=expires_days)
 
-        # 生成哈希值用于存储
-        token_hash = generate_password_hash(token_bytes)
-
-        # 创建token记录
+        # 创建token记录 - 直接存储明文token
         token = APIToken(
-            token_hash=token_hash,
+            token=token_bytes,
             name=name,
             user_id=user_id,
             scopes=json.dumps(scopes) if scopes else None,
@@ -353,8 +354,9 @@ class APIToken(db.Model):
         if self.expires_at and datetime.now(UTC) > self.expires_at.replace(tzinfo=UTC):
             return False
 
-        # 验证token哈希
-        return check_password_hash(self.token_hash, token)
+        # 验证token
+        # 使用常量时间比较以防止时序攻击，虽然对于随机token来说风险较低
+        return secrets.compare_digest(self.token, token)
 
     def update_last_used(self):
         """更新最后使用时间"""

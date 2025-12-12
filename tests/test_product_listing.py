@@ -60,8 +60,8 @@ def test_create_listing_scheduler_fail(mock_send, client, auth_headers, app):
 
     with app.app_context():
         pl = ProductListing.query.filter_by(product_link="http://example.com/fail").first()
-        # Status should remain as initially requested
-        assert pl.status == "requested"
+        # Status should remain as initially requested (or default pending)
+        assert pl.status == "pending"
 
 
 def test_get_listings(client, auth_headers, app):

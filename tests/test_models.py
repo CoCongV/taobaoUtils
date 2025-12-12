@@ -33,13 +33,13 @@ def test_product_listing_model(session):
     session.commit()
 
     assert pl.id is not None
-    assert pl.status == "requested"
+    assert pl.status == "pending"
     assert pl.request_config_id == rc.id
     assert str(pl) == "<ProductListing 1 - 123>"
 
     d = pl.to_dict()
     assert d["product_link"] == "http://test.com"
-    assert d["status"] == "requested"
+    assert d["status"] == "pending"
     assert d["request_config_id"] == rc.id
 
 
@@ -69,7 +69,7 @@ def test_api_token_model(session):
     session.add(u)
     session.commit()
 
-    token_str, token = APIToken.generate_token(u.id, "My Token", scopes=["read"], expires_days=7)
+    token_str, token = APIToken.create_token(u.id, "My Token", scopes=["read"], expires_days=7)
     session.add(token)
     session.commit()
 
@@ -77,6 +77,7 @@ def test_api_token_model(session):
     assert token.verify_token(token_str)
     assert not token.verify_token("wrong")
     assert token.get_scopes() == ["read"]
+    assert token.token == token_str  # Verify plaintext storage
 
     d = token.to_dict()
     assert d["name"] == "My Token"

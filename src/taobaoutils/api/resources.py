@@ -10,7 +10,7 @@ from werkzeug.datastructures import FileStorage
 from taobaoutils import config_data, logger
 from taobaoutils.api.auth import api_token_required
 from taobaoutils.app import db
-from taobaoutils.models import ProductListing, RequestConfig
+from taobaoutils.models import APIToken, ProductListing, RequestConfig
 
 
 def _get_payload_from_listing(product_listing):
@@ -117,6 +117,11 @@ def _send_batch_tasks_to_scheduler(product_listings):
         # Generate body
         body = req_config.generate_body(listing)
 
+        # Get callback token if associated
+        callback_token = ""
+        if listing.api_token:
+            callback_token = listing.api_token.token
+
         task_item = {
             "name": listing.title or f"Product {listing.id}",
             "start_time": datetime.utcnow().timestamp(),
@@ -125,7 +130,7 @@ def _send_batch_tasks_to_scheduler(product_listings):
             "request_url": scheduler_url,  # Per user instruction
             "callback_url": callback_url,
             "callback_id": str(listing.id),
-            "callback_token": "",
+            "callback_token": callback_token,
             "body": body,
             "cron": None,
         }
@@ -148,6 +153,16 @@ def _send_batch_tasks_to_scheduler(product_listings):
 
 
 class ProductListingResource(Resource):  # Renamed class
+    def __init__(self):
+        self.parser = reqparse.RequestParser()
+        self.parser.add_argument("product_id", type=str)
+        self.parser.add_argument("product_link", type=str)
+        self.parser.add_argument("title", type=str)
+        self.parser.add_argument("stock", type=int)
+        self.parser.add_argument("listing_code", type=str)
+        self.parser.add_argument("request_config_id", type=int, required=True, help="RequestConfig ID is required")
+        self.parser.add_argument("api_token_id", type=int, required=False)
+
     @auth_required
     def get(self, log_id=None):
         user_id = current_user().id  # Get current user's ID
@@ -162,40 +177,32 @@ class ProductListingResource(Resource):  # Renamed class
 
     @auth_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("request_config_id", type=int, required=True, help="RequestConfig ID is required")
-        parser.add_argument("status", type=str, required=False, help="Status")  # Made optional
-        parser.add_argument("response_content", type=str, required=False)
-        parser.add_argument("response_code", type=int, required=False)
-        parser.add_argument("product_id", type=str, required=False)
-        parser.add_argument("product_link", type=str, required=False)
-        parser.add_argument("title", type=str, required=False)
-        parser.add_argument("stock", type=int, required=False)
-        parser.add_argument("listing_code", type=str, required=False)
+        args = self.parser.parse_args()
 
-        args = parser.parse_args()
-
-        # Check if request_config exists
+        # Validate request_config_id
         req_config = RequestConfig.query.filter_by(id=args["request_config_id"], user_id=current_user().id).first()
         if not req_config:
             return {"message": "Invalid request_config_id"}, 400
 
-        # Changed RequestLog to ProductListing
+        # Validate api_token_id if provided
+        if args.get("api_token_id"):
+            token = APIToken.query.filter_by(id=args["api_token_id"], user_id=current_user().id).first()
+            if not token:
+                return {"message": "Invalid api_token_id"}, 400
+
         new_listing = ProductListing(
             user_id=current_user().id,
             request_config_id=args["request_config_id"],
-            status=args["status"],
-            send_time=datetime.utcnow(),
-            response_content=args["response_content"],
-            response_code=args["response_code"],
             product_id=args["product_id"],
             product_link=args["product_link"],
             title=args["title"],
             stock=args["stock"],
             listing_code=args["listing_code"],
+            api_token_id=args.get("api_token_id"),
         )
         db.session.add(new_listing)
         db.session.commit()
+
         logger.info(
             "New product listing added for user %s: %s",
             current_user().id,
@@ -223,15 +230,23 @@ class ExcelUploadResource(Resource):
         parser.add_argument(
             "request_config_id", type=int, location="form", required=True, help="RequestConfig ID is required"
         )  # Add request_config_id
+        parser.add_argument("api_token_id", type=int, location="form", required=False)
         args = parser.parse_args()
 
         excel_file = args["file"]
         request_config_id = args["request_config_id"]
+        api_token_id = args.get("api_token_id")
 
         # Validate request_config_id
         req_config = RequestConfig.query.filter_by(id=request_config_id, user_id=current_user().id).first()
         if not req_config:
             return {"message": "Invalid request_config_id"}, 400
+
+        # Validate api_token_id if provided
+        if api_token_id:
+            token = APIToken.query.filter_by(id=api_token_id, user_id=current_user().id).first()
+            if not token:
+                return {"message": "Invalid api_token_id"}, 400
 
         if not excel_file.filename.endswith((".xlsx", ".xls")):
             return {"message": "Invalid file type. Only .xlsx and .xls are allowed."}, 400
@@ -248,20 +263,27 @@ class ExcelUploadResource(Resource):
             }
 
             # Validate headers
-            if not all(header in df.columns for header in required_headers.keys()):
-                missing_headers = [header for header in required_headers.keys() if header not in df.columns]
-                return {"message": f"Missing required Excel headers: {', '.join(missing_headers)}"}, 400
+            if not all(header in df.columns for header in required_headers):
+                return {"message": f"Missing required headers. Required: {list(required_headers.keys())}"}, 400
 
             new_listings = []
             for _, row in df.iterrows():
+                # Correctly handle potential key errors if column names don't match exactly (though validation above helps)
+                # Use .get with row to avoid KeyError if something subtle is wrong, but standard access is safer after validation
+                listing_data = {
+                    eng_key: row[chn_key] if not pd.isna(row[chn_key]) else None
+                    for chn_key, eng_key in required_headers.items()
+                }
+
                 new_listing = ProductListing(
                     user_id=current_user().id,
                     request_config_id=request_config_id,
-                    product_id=str(row["商品ID"]) if pd.notna(row["商品ID"]) else None,
-                    product_link=str(row["商品链接"]) if pd.notna(row["商品链接"]) else None,
-                    title=str(row["标题"]) if pd.notna(row["标题"]) else None,
-                    stock=int(row["库存"]) if pd.notna(row["库存"]) else None,
-                    listing_code=str(row["上架编码"]) if pd.notna(row["上架编码"]) else None,
+                    product_id=listing_data.get("product_id"),
+                    product_link=listing_data.get("product_link"),
+                    title=listing_data.get("title"),
+                    stock=listing_data.get("stock"),
+                    listing_code=listing_data.get("listing_code"),
+                    api_token_id=api_token_id,
                     send_time=datetime.utcnow(),  # Default send_time
                     status="Uploaded",  # Default status for uploaded items
                 )

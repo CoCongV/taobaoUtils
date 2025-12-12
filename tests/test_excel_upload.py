@@ -103,4 +103,4 @@ def test_upload_missing_headers(client, auth_headers):
         "/api/product-listings/upload", data=data, content_type="multipart/form-data", headers=auth_headers
     )
     assert response.status_code == 400
-    assert "Missing required Excel headers" in response.json["message"]
+    assert "Missing required headers" in response.json["message"]

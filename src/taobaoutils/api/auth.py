@@ -218,7 +218,8 @@ class APITokenResource(Resource):
         args = parser.parse_args()
 
         # 生成token
-        token_value, token = APIToken.generate_token(
+        # 生成token
+        token_value, token = APIToken.create_token(
             user_id=user.id, name=args["name"], scopes=args["scopes"], expires_days=args["expires_days"]
         )
 
