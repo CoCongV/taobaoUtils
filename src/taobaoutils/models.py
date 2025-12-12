@@ -238,22 +238,15 @@ class RequestConfig(db.Model):
         if not self.body:
             return {}
 
-        try:
-            template_str = self.body
-            # Use to_dict() to get product attributes
-            params = product.to_dict()
+        template_str = self.body
+        # Use to_dict() to get product attributes
+        params = product.to_dict()
 
-            for key, value in params.items():
-                val_str = str(value) if value is not None else ""
-                template_str = template_str.replace(f"{{{key}}}", val_str)
+        for key, value in params.items():
+            val_str = str(value) if value is not None else ""
+            template_str = template_str.replace(f"{{{key}}}", val_str)
 
-            return json.loads(template_str)
-        except Exception:
-            # Need logger here? models.py might not have logger set up.
-            # I will just return raw body parsed if template fails?
-            # Or empty dict.
-            # Printing to stderr for now or just ignoring.
-            return {}
+        return json.loads(template_str)
 
     def set_cookie(self, cookie_data):
         """
