@@ -33,12 +33,6 @@ def create_app():
     app.config["JWT_REFRESH_LIFESPAN"] = {"days": 30}
 
     db.init_app(app)
-    api.init_app(app)
-
-    # 初始化 Praetorian
-    from taobaoutils.models import User
-
-    guard.init_app(app, User)
 
     # Import and register blueprints/resources
     from taobaoutils.api.routes import initialize_routes
@@ -46,6 +40,13 @@ def create_app():
     # Check if routes are already registered to avoid re-registration in tests
     if not api.resources:
         initialize_routes(api)
+
+    api.init_app(app)
+
+    # 初始化 Praetorian
+    from taobaoutils.models import User
+
+    guard.init_app(app, User)
 
     with app.app_context():
         db.create_all()  # Create database tables for our models
