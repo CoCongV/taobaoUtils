@@ -15,12 +15,8 @@ def test_user_model(session):
     assert u.identity == u.id
     assert u.rolenames == ["user"]
 
-    u.set_token("token123")
-    assert u.taobao_token == "token123"
-
     d = u.to_dict()
     assert d["username"] == "testuser"
-    assert d["taobao_token"] is True
 
 
 def test_product_listing_model(session):

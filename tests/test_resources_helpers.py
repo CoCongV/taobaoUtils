@@ -129,10 +129,15 @@ def test_send_single_task_failure(mock_post, mock_listing, mock_config):
 @patch("taobaoutils.api.resources.requests.post")
 def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
     mock_post.return_value.raise_for_status = MagicMock()
-    mock_listing.request_config.header = '{"Cookie": "abc"}'
-    mock_listing.request_config.payload = '{"key": "val"}'
-    mock_listing.title = "Test Product"
-    listings = [mock_listing, mock_listing]
+    # Define templates with placeholders
+    mock_listing.request_config.header = '{"Cookie": "user_{id}"}'
+    mock_listing.request_config.payload = '{"title": "{title}", "url": "{product_link}"}'
+
+    mock_listing.id = 99
+    mock_listing.title = "TestProduct"
+    mock_listing.product_link = "http://example.com"
+
+    listings = [mock_listing]
 
     # Add CALLBACK_URL to config
     mock_config["scheduler"]["CALLBACK_URL"] = "http://callback"
@@ -145,13 +150,14 @@ def test_send_batch_tasks_success(mock_post, mock_listing, mock_config):
         args, kwargs = mock_post.call_args
         json_data = kwargs["json"]
         assert "tasks_data" in json_data
-        assert len(json_data["tasks_data"]) == 2
+        assert len(json_data["tasks_data"]) == 1
         item = json_data["tasks_data"][0]
-        assert item["name"] == "Test Product"
-        assert item["header"] == {"Cookie": "abc"}
-        assert item["body"] == {"key": "val"}
+        assert item["name"] == "TestProduct"
+        # Verify substitutions
+        assert item["header"] == {"Cookie": "user_99"}
+        assert item["body"] == {"title": "TestProduct", "url": "http://example.com"}
         assert item["callback_url"] == "http://callback"
-        assert item["callback_id"] == "1"
+        assert item["callback_id"] == "99"
 
 
 @patch("taobaoutils.api.resources.requests.post")

@@ -53,13 +53,6 @@ class User(db.Model, SQLAlchemyUserMixin):
         self.email = email
         if password:
             self.set_password(password)
-        self.sub_user = sub_user
-        self.filter_copied = filter_copied
-        self.copy_type = copy_type
-        self.param_id = param_id
-        self.is_search = is_search
-        if userids is not None:
-            self.userids = json.dumps(userids)
         # 设置其他属性
         for key, value in kwargs.items():
             if hasattr(self, key):
@@ -109,12 +102,6 @@ class User(db.Model, SQLAlchemyUserMixin):
 
     def to_dict(self):
         """转换为字典格式"""
-        userids_list = []
-        if self.userids:
-            try:
-                userids_list = json.loads(self.userids)
-            except Exception:
-                pass
         return {
             "id": self.id,
             "username": self.username,
@@ -122,12 +109,6 @@ class User(db.Model, SQLAlchemyUserMixin):
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "taobao_token": bool(self.taobao_token),  # Indicate presence of token, not the token itself
-            "sub_user": self.sub_user,
-            "userids": userids_list,
-            "filter_copied": self.filter_copied,
-            "copy_type": self.copy_type,
-            "param_id": self.param_id,
             "is_search": self.is_search,
         }
 

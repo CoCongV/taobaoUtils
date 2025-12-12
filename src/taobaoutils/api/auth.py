@@ -126,12 +126,6 @@ class UserResource(Resource):
         parser.add_argument("password", type=str, required=False)
         parser.add_argument("is_active", type=bool, required=False)
         parser.add_argument("taobao_token", type=str, required=False)  # Renamed from 'token' for clarity
-        parser.add_argument("sub_user", type=str, required=False)
-        parser.add_argument("userids", type=list, location="json", required=False)  # Expects a list, will be json.dumps
-        parser.add_argument("filter_copied", type=bool, required=False)
-        parser.add_argument("copy_type", type=int, required=False)
-        parser.add_argument("param_id", type=str, required=False)
-        parser.add_argument("is_search", type=str, required=False)
         parser.add_argument("roles", type=list, location="json", required=False)  # Expects a list, will be json.dumps
 
         args = parser.parse_args()
@@ -168,36 +162,6 @@ class UserResource(Resource):
         if args["taobao_token"]:
             user.set_token(args["taobao_token"])
             updated_fields["taobao_token"] = True  # Indicate presence
-
-        # Update sub_user
-        if args["sub_user"] is not None:
-            user.sub_user = args["sub_user"]
-            updated_fields["sub_user"] = args["sub_user"]
-
-        # Update userids (stored as JSON string)
-        if args["userids"] is not None:
-            user.userids = json.dumps(args["userids"])
-            updated_fields["userids"] = args["userids"]
-
-        # Update filter_copied
-        if args["filter_copied"] is not None:
-            user.filter_copied = args["filter_copied"]
-            updated_fields["filter_copied"] = args["filter_copied"]
-
-        # Update copy_type
-        if args["copy_type"] is not None:
-            user.copy_type = args["copy_type"]
-            updated_fields["copy_type"] = args["copy_type"]
-
-        # Update param_id
-        if args["param_id"] is not None:
-            user.param_id = args["param_id"]
-            updated_fields["param_id"] = args["param_id"]
-
-        # Update is_search
-        if args["is_search"] is not None:
-            user.is_search = args["is_search"]
-            updated_fields["is_search"] = args["is_search"]
 
         # Update roles (stored as JSON string)
         if args["roles"] is not None:
