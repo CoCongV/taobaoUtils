@@ -193,7 +193,6 @@ class RequestConfig(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     request_url = db.Column(db.String(500), nullable=True)  # 目标URL
-    taobao_token = db.Column(db.Text, nullable=True)
     body = db.Column(db.Text, nullable=False)  # 存储为JSON字符串
     header = db.Column(db.Text, nullable=False)  # 存储为JSON字符串，用于HTTP头
 
@@ -211,7 +210,6 @@ class RequestConfig(db.Model):
         body,
         header,
         request_url=None,
-        taobao_token=None,
         request_interval_minutes=8,
         random_min=2,
         random_max=15,
@@ -219,7 +217,6 @@ class RequestConfig(db.Model):
         self.user_id = user_id
         self.name = name
         self.request_url = request_url
-        self.taobao_token = taobao_token
         # Ensure body is stored as string
         self.body = json.dumps(body) if isinstance(body, (dict, list)) else body
         # Ensure header is stored as string
@@ -268,7 +265,6 @@ class RequestConfig(db.Model):
             "user_id": self.user_id,
             "name": self.name,
             "request_url": self.request_url,
-            "taobao_token": self.taobao_token,
             "body": body_obj,
             "header": header_obj,
             "request_interval_minutes": self.request_interval_minutes,

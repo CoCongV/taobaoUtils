@@ -24,7 +24,6 @@ def test_create_request_config(client, auth_headers):
     data = {
         "name": "Test Config",
         "request_url": "http://example.com/api",
-        "taobao_token": "token123",
         "body": {"a": 1},
         "header": {"x": 1},
         "request_interval_minutes": 10,

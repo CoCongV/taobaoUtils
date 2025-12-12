@@ -12,7 +12,6 @@ class RequestConfigListResource(Resource):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument("name", type=str, required=True, help="Name is required")
         self.parser.add_argument("request_url", type=str, required=False)
-        self.parser.add_argument("taobao_token", type=str, required=False)
         self.parser.add_argument("body", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
         self.parser.add_argument("request_interval_minutes", type=int, required=False)
@@ -34,7 +33,6 @@ class RequestConfigListResource(Resource):
             user_id=user_id,
             name=args["name"],
             request_url=args.get("request_url"),
-            taobao_token=args["taobao_token"],
             body=args["body"],
             header=args["header"],
             request_interval_minutes=args.get("request_interval_minutes", 8),
@@ -53,7 +51,6 @@ class RequestConfigResource(Resource):
         self.parser = reqparse.RequestParser()
         self.parser.add_argument("name", type=str, required=False)
         self.parser.add_argument("request_url", type=str, required=False)
-        self.parser.add_argument("taobao_token", type=str, required=False)
         self.parser.add_argument("body", type=dict, required=False)
         self.parser.add_argument("header", type=dict, required=False)
         self.parser.add_argument("request_interval_minutes", type=int, required=False)
@@ -76,8 +73,6 @@ class RequestConfigResource(Resource):
             config.name = args["name"]
         if args["request_url"]:
             config.request_url = args["request_url"]
-        if args["taobao_token"]:
-            config.taobao_token = args["taobao_token"]
         if args["body"]:
             config.body = json.dumps(args["body"])
         if args["header"]:
